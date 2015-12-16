@@ -1,0 +1,33 @@
+<!-- login page where user is redirected if not authenticated -->
+{% extends "base.html" %}
+{% load bootstrap3 %}
+{% block title %}
+    Login
+{% endblock %}
+{% block app_name %}
+    Login
+{% endblock %}
+{% block content %}
+    <div class="jumbotron">
+        <div class="container">
+            <p>Log in to access application</p>
+            <p>{{ login_message }}</p>
+        </div>
+    </div>
+    <div class="container">
+        <!-- Example row of columns -->
+        <div class="row">
+            <form name="login-form" id="login-form" method="post" class="form-inline" role="form">
+                <!-- http://django-bootstrap3.readthedocs.org/en/latest/templatetags.html -->
+                {% csrf_token %}
+                {% bootstrap_form form layout="inline" %}
+                {% bootstrap_form_errors form %}
+                <input type="submit" class="btn btn-info" value="Submit">
+            </form>
+            <form method="post" name="logout-form" role="form" action="/logout/">
+                {% csrf_token %}
+                <p><input type="submit" value="logout" class="bt btn-danger"/></p>
+            </form>
+        </div>
+    </div>
+{% endblock %}
