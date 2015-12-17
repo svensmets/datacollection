@@ -59,15 +59,13 @@ class TwitterTweepy:
         names_list = names.split(',')
         print('friends {} followers {} max followers {} listmemberships {} listsubscriptions {}'
               .format(friends, followers, max_followers, list_memberships, list_subscriptions))
-        # store EGO-user objects (the usernames manually entered
+
+        # convert names entered to twitter users objects and store
         for name in names_list:
             # string cannot not be empty
             if name:
                 try:
                     user = self.api.get_user(name)
-                except tweepy.TweepError:
-                    print("Error in profile_information_search: error get username EGO-user")
-                try:
                     twitter_user = TwitterUser(user_id=user.id, name=user.name, screen_name=user.screen_name,
                                                friends_count=user.friends_count, followers_count=user.followers_count)
                     if user.followers_count > max_followers:
@@ -76,33 +74,58 @@ class TwitterTweepy:
                         twitter_user.max_followers_exceeded = True
                         names_list.remove(name)
                     twitter_user.save()
-                except:
-                    print("Error saving user")
+                except tweepy.TweepError:
+                    print("Error in profile_information_search: error get username EGO-user")
         # Collect friends of ego-users
         if friends:
-            print("Collect friends of ego-user")
+            print("Collect friends")
             # iterate over all ego names the user has entered
             for name in names_list:
-                print("ids of {}".format(name))
+                print("Friend ids of {}".format(name))
                 ids = list()
                 # get user ids of friends of user
                 for friend_id in tweepy.Cursor(self.api.friends_ids, screen_name=name).items():
                     # add ids to list of ids
                     ids.append(friend_id)
-                    print(friend_id)
                 # get user objects from friend-ids and store in database
-                for page in self.paginate(ids, 100):
-                    users = self.api.lookup_users(user_ids=page)
-                    for user in users:
-                        twitter_user = TwitterUser(user_id=user.id, name=user.name, screen_name=user.screen_name,
-                                    friends_count=user.friends_count, followers_count=user.followers_count)
-                        twitter_user.save()
+                for page in self._paginate(ids, 100):
+                    self._saveusers(page)
         # Collect followers of ego users
         if followers:
-            print("Collect followers of ego-users")
-            #TODO
+            print("Collect followers")
+            for name in names_list:
+                print("Follower ids of {}".format(name))
+                ids = list()
+                # get user ids of followers of user
+                for follower_id in tweepy.Cursor(self.api.followers_ids, screen_name=name).items():
+                    ids.append(follower_id)
+                # get user objects from follower-ids and store in database
+                for page in self._paginate(ids, 100):
+                    self._saveusers(page)
 
-    def paginate(self, iterable, page_size):
+        # Collect lists the ego users are members of
+        if list_memberships:
+            print("Collect list memberships")
+            for name in names_list:
+                print("Lists of user {}".format(name))
+                for lists in tweepy.Cursor(self.api.lists_memberships, screen_name=name).items():
+                    for l in lists:
+                        print("List data: {}".format(l))
+
+
+    def _saveusers(self, ids):
+        """
+        converts a hundred ids of users to objects and saves them
+        :param ids: max 100
+        """
+        users = self.api.lookup_users(user_ids=ids)
+        for user in users:
+            twitter_user = TwitterUser(user_id=user.id, name=user.name, screen_name=user.screen_name,
+                                       friends_count=user.friends_count,
+                                       followers_count=user.followers_count)
+            twitter_user.save()
+
+    def _paginate(self, iterable, page_size):
         """
         iterates over an iterable in <page size> pieces
         code from http://stackoverflow.com/questions/14265082/query-regarding-pagination-in-tweepy-get-followers-of-a-particular-twitter-use

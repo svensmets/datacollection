@@ -77,7 +77,7 @@ def profile_information_search(request):
     if request.is_ajax():
         if request.method == 'POST':
             # http://stackoverflow.com/questions/29780060/trying-to-parse-request-body-from-post-in-django
-            # json.loads() only accepts a unicade string, so it must be decoded before passing it to json.loads()
+            # json.loads() only accepts a unicode string, so it must be decoded before passing it to json.loads()
             body_unicode = request.body.decode('utf-8')
             body = json.loads(body_unicode)
             names = body['names']
