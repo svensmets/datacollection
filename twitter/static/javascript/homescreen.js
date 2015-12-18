@@ -2,20 +2,28 @@
  * Created by svens on 30-10-2015.
  */
 $(document).ready(function(){
-    //visibility of fields on form
-    //default no search options visible on template
-    $("#profile-information-namefield").css('visibility', 'hidden');
-    $("#profile-information-options").css('visibility', 'hidden');
-    //if clicked on the appropriate button, the search options become visible
-    $("#btn-search-profile-information").click(function(){
-        $("#profile-information-namefield").css('visibility', 'visible');
-        $("#profile-information-options").css('visibility', 'visible');
-    });
-    $("#btn-second-search-option").click(function(){
-        $("#profile-information-namefield").css('visibility', 'hidden');
-        $("#profile-information-options").css('visibility', 'hidden');
-    });
+    $("#profile-information-row").css('display', 'none');
+    $("#tweets-by-name-row").css('display', 'none');
+    $("#tweets-by-searchterm-row").css('display', 'none');
 
+    $("#btn-search-profile-information").click(function(){
+        $("#profile-information-row").fadeIn();
+        $("#tweets-by-name-row").fadeOut();
+        $("#tweets-by-searchterm-row").fadeOut();
+    });
+    $("#btn-search-tweets-names").click(function(){
+        $("#profile-information-row").fadeOut();
+        $("#tweets-by-name-row").fadeIn();
+        $("#tweets-by-searchterm-row").fadeOut();
+    });
+    $("#btn-search-tweets-searchterms").click(function(){
+        $("#profile-information-row").fadeOut();
+        $("#tweets-by-name-row").fadeOut();
+        $("#tweets-by-searchterm-row").fadeIn();
+    });
+    /*
+    * REFRESH TASKS
+    * */
     // refresh tasks: necessary because task does not yet exist when user performs a search and the screen returns
     $("#refresh-tasks-button").click(function(){
         $.post("/get_tasks/", function(data){
@@ -43,18 +51,22 @@ $(document).ready(function(){
             alert("error")
         });
     });
-
+    /*
+    * SEARCH PROFILE INFORMATION
+    * */
     //add names
     //Check whether the name the user entered is a valid screenname
     //Adds name to textarea if valid
     $("#add-name-button").click(function(){
         if($("#add-name-input").val()){
-            var text = $("#add-name-input").val();
-            $.get("/lookupname/", {name:text}, function(data){
+            var name = $("#add-name-input").val();
+            /* check name, if exists as a twittername add it to the textarea*/
+            $.get("/lookupname/", {name:name}, function(data){
                 var response = data['exists'];
                 if(response === 'true'){
                     /*add name to textarea*/
-                    $("#all-names-textarea").append(text + ",");
+                    var allnames = $("#all-names-textarea").val();
+                    $("#all-names-textarea").val(allnames + name + ",");
                     /*clear textfield*/
                     $("#add-name-input").val("");
                     /*remove possible error message*/
@@ -65,16 +77,6 @@ $(document).ready(function(){
                     $("#add-name-input").val("");
                 }
             })
-        }
-    });
-    $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
-            if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
-                // Send the token to same-origin, relative URLs only.
-                // Send the token only if the method warrants CSRF protection
-                // Using the CSRFToken value acquired earlier
-                xhr.setRequestHeader("X-CSRFToken", csrftoken);
-            }
         }
     });
     //submit profile information search task
@@ -122,6 +124,72 @@ $(document).ready(function(){
             });
         }
     });
+    //clear names of textarea search profile information
+    $("#btn-clear-profile-information-textarea").click(function(){
+        $("#all-names-textarea").val("");
+    });
+    /*
+    * SEARCH TWEETS BY NAME
+    * */
+    //Check whether the name the user entered is a valid screenname
+    //Adds name to textarea if valid
+    $("#add-tweetname-button").click(function(){
+        if($("#add-tweetname-input").val()){
+            var name = $("#add-tweetname-input").val();
+            $.get("/lookupname/", {name:name}, function(data){
+                var response = data['exists'];
+                if(response === 'true'){
+                    /*add name to textarea*/
+                    var allnames = $("#all-names-textarea-tweetsbyname").val();
+                    $("#all-names-textarea-tweetsbyname").val(allnames + name + ",");
+                    /*clear textfield*/
+                    $("#add-tweetname-input").val("");
+                    /*remove possible error message*/
+                    $("#error_usernotvalid").text("");
+                }else{
+                    $("#add-tweetname-input").after("<span id='error_usernotvalid'>user not valid</span>");
+                    /*clear textfield*/
+                    $("#add-tweetname-input").val("");
+                }
+            })
+        }
+    });
+    //clear names of textarea tweets by name
+    $("#btn-clear-tweetsbyname-textarea").click(function(){
+        $("#all-names-textarea-tweetsbyname").val("");
+    });
+    /*
+    * SEARCH TWEETS BY SEARCHTERM
+    * */
+    $("#add-searchterm-button").click(function(){
+        if($("#add-searchterm-input").val()){
+            var name = $("#add-searchterm-input").val();
+            $.get("/lookupname/", {name:name}, function(data){
+                var response = data['exists'];
+                if(response === 'true'){
+                    /*add name to textarea*/
+                    var allnames = $("#all-names-textarea-searchterms").val();
+                    $("#all-names-textarea-searchterms").val(allnames + name + ",");
+                    /*clear textfield*/
+                    $("#add-searchterm-input").val("");
+                    /*remove possible error message*/
+                    $("#error_usernotvalid").text("");
+                }else{
+                    $("#add-searchterm-input").after("<span id='error_usernotvalid'>user not valid</span>");
+                    /*clear textfield*/
+                    $("#add-searchterm-input").val("");
+                }
+            })
+        }
+    });
+    //clear names of textarea tweets by name
+    $("#btn-clear-searchterms-textarea").click(function(){
+        $("#all-names-textarea-searchterms").val("");
+    });
+
+    /*
+    * Functions for security token
+    * */
     //https://docs.djangoproject.com/en/1.6/ref/contrib/csrf/#ajax
     function getCookie(name) {
         var cookieValue = null;
@@ -139,6 +207,17 @@ $(document).ready(function(){
         return cookieValue;
     }
     var csrftoken = getCookie('csrftoken');
+
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
+                // Send the token to same-origin, relative URLs only.
+                // Send the token only if the method warrants CSRF protection
+                // Using the CSRFToken value acquired earlier
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+        }
+    });
 
     function csrfSafeMethod(method) {
         // these HTTP methods do not require CSRF protection

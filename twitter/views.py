@@ -94,3 +94,11 @@ def profile_information_search(request):
             search_task = SearchTask(user=request.user, task=status.task_id)
             search_task.save()
             return HttpResponseRedirect('/homescreen/')
+
+def tweets_by_name_search(request):
+    """
+    Start a streaming search of tweets based on a list of names
+    :param request:
+    names = list of names for the filter in the search
+    :return:
+    """

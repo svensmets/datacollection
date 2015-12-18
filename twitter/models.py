@@ -77,7 +77,7 @@ class TwitterUser(models.Model):
     Represents a User of Twitter, not a user of the program
     User of the program is represented by built in User class
     """
-    user_id = models.BigIntegerField()
+    user_id = models.BigIntegerField(primary_key=True)
     name = models.CharField(max_length=100)
     screen_name = models.CharField(max_length=100)
     friends_count = models.BigIntegerField()
@@ -88,3 +88,29 @@ class TwitterUser(models.Model):
     max_followers_exceeded = models.BooleanField(default=False)
     # date_added = models.DateTimeField(auto_now=True)
 
+
+class TwitterList(models.Model):
+    """
+    Represents a list in twitter
+    A twitter_user can be a member of a list or a subscriber
+    """
+    list_id = models.BigIntegerField(primary_key=True)
+    list_name = models.CharField(max_length=200)
+    list_full_name = models.CharField(max_length=200)
+    user_membership = models.ManyToManyField(TwitterUser, related_name="list_membership", blank=True)
+    user_subscription = models.ManyToManyField(TwitterUser, related_name="list_subscription", blank=True)
+
+
+class Tweet(models.Model):
+    """
+    Represents a tweet in twitter
+    """
+    tweet_id = models.BigIntegerField(primary_key=True)
+    tweeter_id = models.BigIntegerField()
+    tweeter_name = models.CharField(max_length=200)
+    tweet_text = models.CharField(max_length=200)
+    tweet_date = models.DateTimeField()
+    is_retweet = models.BooleanField()
+    mentions = models.CharField(max_length=200, blank=True)
+    hashtags = models.CharField(max_length=200, blank=True)
+    hyperlinks = models.CharField(max_length=200, blank=True)

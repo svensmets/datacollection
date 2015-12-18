@@ -1,7 +1,8 @@
 import itertools
 import tweepy
 from twitter.models import TwitterUser
-
+from twitter.models import TwitterList
+from twitter.models import Tweet
 
 class TwitterTweepy:
     """
@@ -59,7 +60,8 @@ class TwitterTweepy:
         names_list = names.split(',')
         print('friends {} followers {} max followers {} listmemberships {} listsubscriptions {}'
               .format(friends, followers, max_followers, list_memberships, list_subscriptions))
-
+        # list of ego_users as TwitterUser-objects
+        list_ego_users = list()
         # convert names entered to twitter users objects and store
         for name in names_list:
             # string cannot not be empty
@@ -74,6 +76,8 @@ class TwitterTweepy:
                         twitter_user.max_followers_exceeded = True
                         names_list.remove(name)
                     twitter_user.save()
+                    # used for getting the id in list memberships and list subscriptions
+                    list_ego_users.append(twitter_user)
                 except tweepy.TweepError:
                     print("Error in profile_information_search: error get username EGO-user")
         # Collect friends of ego-users
@@ -81,37 +85,64 @@ class TwitterTweepy:
             print("Collect friends")
             # iterate over all ego names the user has entered
             for name in names_list:
-                print("Friend ids of {}".format(name))
-                ids = list()
-                # get user ids of friends of user
-                for friend_id in tweepy.Cursor(self.api.friends_ids, screen_name=name).items():
-                    # add ids to list of ids
-                    ids.append(friend_id)
-                # get user objects from friend-ids and store in database
-                for page in self._paginate(ids, 100):
-                    self._saveusers(page)
+                # check first if name is not empty
+                if name:
+                    print("Friend ids of {}".format(name))
+                    ids = list()
+                    # get user ids of friends of user
+                    for friend_id in tweepy.Cursor(self.api.friends_ids, screen_name=name).items():
+                        # add ids to list of ids
+                        ids.append(friend_id)
+                    # get user objects from friend-ids and store in database
+                    for page in self._paginate(ids, 100):
+                        self._saveusers(page)
+
         # Collect followers of ego users
         if followers:
             print("Collect followers")
             for name in names_list:
-                print("Follower ids of {}".format(name))
-                ids = list()
-                # get user ids of followers of user
-                for follower_id in tweepy.Cursor(self.api.followers_ids, screen_name=name).items():
-                    ids.append(follower_id)
-                # get user objects from follower-ids and store in database
-                for page in self._paginate(ids, 100):
-                    self._saveusers(page)
+                # check first if name is not empty
+                if name:
+                    print("Follower ids of {}".format(name))
+                    ids = list()
+                    # get user ids of followers of user
+                    for follower_id in tweepy.Cursor(self.api.followers_ids, screen_name=name).items():
+                        ids.append(follower_id)
+                    # get user objects from follower-ids and store in database
+                    for page in self._paginate(ids, 100):
+                        self._saveusers(page)
 
         # Collect lists the ego users are members of
         if list_memberships:
             print("Collect list memberships")
             for name in names_list:
-                print("Lists of user {}".format(name))
-                for lists in tweepy.Cursor(self.api.lists_memberships, screen_name=name).items():
-                    for l in lists:
-                        print("List data: {}".format(l))
+                if name:
+                    # check first if list is not empty
+                    ego_user = self._get_user(name, list_ego_users)
+                    print(name, list_ego_users)
+                    for twitter_list in tweepy.Cursor(self.api.lists_memberships, screen_name=name).items():
+                        # for a many to many relationship, the object has to be saved first,
+                        # then the relationship can be added
+                        twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
+                                                  list_full_name=twitter_list.full_name)
+                        twitterlist.save()
+                        twitterlist.user_membership.add(ego_user)
 
+
+
+        # Collect lists the ego user subscribes to
+        if list_subscriptions:
+            print("Collect list subscriptions")
+            for name in names_list:
+                if name:
+                    # check first if list is not empty
+                    ego_user = self._get_user(name, list_ego_users)
+                    print(name, list_ego_users)
+                    for twitter_list in tweepy.Cursor(self.api.lists_subscriptions, screen_name=name).items():
+                        twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
+                                                  list_full_name=twitter_list.full_name)
+                        twitterlist.save()
+                        twitterlist.user_subscription.add(ego_user)
 
     def _saveusers(self, ids):
         """
@@ -128,7 +159,8 @@ class TwitterTweepy:
     def _paginate(self, iterable, page_size):
         """
         iterates over an iterable in <page size> pieces
-        code from http://stackoverflow.com/questions/14265082/query-regarding-pagination-in-tweepy-get-followers-of-a-particular-twitter-use
+        code from http://stackoverflow.com/questions/14265082/query-regarding-pagination-in-
+        tweepy-get-followers-of-a-particular-twitter-use
         http://stackoverflow.com/questions/3744451/is-this-how-you-paginate-or-is-there-a-better-algorithm/3744531#3744531
         :param iterable: the iterable to iterate over
         :param page_size: the max page size returned
@@ -142,5 +174,48 @@ class TwitterTweepy:
             # start of iterable is shifted page_size times / first -> page size items placed in page
             iterable, page = (itertools.islice(i1, page_size, None), list(itertools.islice(i2, page_size)))
             if len(page) == 0:
-                break;
+                break
             yield page
+
+    def _get_user(self, name, list_users):
+        """
+        returns the user with the username from the given list
+        :param name: name of the user
+        :param list_users: the list of users
+        :return: TwitterUser object with the name
+        """
+        for user in list_users:
+            print("get user method {} {}".format(name, user.screen_name))
+            if user.screen_name.lower() == name.lower():
+                return user
+
+
+class TweetsByNameStreamListener(tweepy.StreamListener):
+    def on_status(self, status):
+        text_of_tweet = ""
+        hashtags = ""
+        urls = ""
+        mentions = ""
+        delimiter = ";"
+        is_retweet = False
+        # check is the tweet is a retweet
+        # if it is, add is_retweet = True and get the text from the original tweet (normal text is truncated)
+        if hasattr(status, 'retweeted_status'):
+            text_of_tweet = status.retweeted_status.text
+            is_retweet = True
+        else:
+            text_of_tweet = status.text
+        # get mentions, urls & hashtags
+        if hasattr(status, 'entities'):
+            for url in status.entities.expanded_url:
+                urls += url + delimiter
+            for hashtag in status.entities.hashtags:
+                hashtags += hashtag + delimiter
+            for mention in status.entities.user_mentions:
+                mentions += mention + delimiter
+        tweet = Tweet(tweet_id=status.id_str,
+                      tweeter_id=status.user.id, tweeter_name=status.user.screen_name,tweet_text=text_of_tweet,
+                      tweet_date=status.created_at, is_retweet=is_retweet,
+                      mentions=mentions, hashtags=hashtags, hyperlinks=urls)
+        tweet.save()
+

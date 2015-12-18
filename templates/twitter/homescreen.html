@@ -14,32 +14,19 @@
     </div>
 
     <div class="container">
-        <!-- Show the tasks the user has started in the past -->
-        <div class="row">
-            <a id="refresh-tasks-button" role="button" class="btn btn-danger">refresh tasks</a>
-        </div>
-        <div class="row">
-            <div class="col-md-12" id="tasks-row">
-            <h2>Tasks of {{ user.username }}</h2>
-                {% if not tasks %}
-                    No tasks
-                {% endif %}
-                {% for task in tasks %}
-                <div class="well">{{ task }} </div>
-                {% endfor %}
-            </div>
-        </div>
         <div class="row">
             <!-- show possible search tasks the user can do -->
             <div class="col-md-4">
                 <h2>Search tasks</h2>
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-profile-information">Search Profile Information &raquo;</a></p>
-                <p><a class="btn btn-default" href="#" role="button" id="btn-second-search-option">Other search options not yet implemented &raquo;</a></p>
+                <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-names">Search Tweets based on Names &raquo;</a></p>
+                <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-searchterms">Search Tweets based on Search Terms &raquo;</a></p>
             </div>
         </div>
-        <div class="row">
+        <div class="row" id="profile-information-row">
             <!-- Options for searching profile information  (only visible on appropriate button click)-->
             <div class="col-md-4" id="profile-information-namefield">
+                <h3>Search profile information</h3>
                 <form role="form">
                     {% csrf_token %}
                     <div class="form-group">
@@ -48,16 +35,20 @@
                         <a id="add-name-button" role="button" class="btn btn-default">add name</a>
                     </div>
                 </form>
+                <!-- button to clear textarea -->
+                <p><a class="btn btn-warning" href="#" role="button" id="btn-clear-profile-information-textarea">Clear names</a></p>
             </div>
-            <div class="col-md-4" id="profile-information-options">
-                <form role="form" id="form-search-options">
+            <form role="form" id="form-search-options">
+                <div class="col-md-4" id="profile-information-textarea-col">
                     {% csrf_token %}
                     <div class="form-group">
                         <label for="all-names-textarea">All names: </label>
                         <textarea id="all-names-textarea" class="form-control" rows="10" disabled="disabled" required="required"></textarea>
                     </div>
+                </div>
+                <div class="col-md-4" id="profile-information-options-col">
                     <div class="form-group">
-                        <label for="max-followers-input" class="form">Max number of followers: </label>
+                        <label for="max-followers-input" class="form">Max followers: </label>
                         <input type="number" id="max-followers-input" max="10000000" class="form-control">
                     </div>
                     <div class="form-group">
@@ -79,8 +70,99 @@
                     <div class="form-group">
                         <input type="submit" id="bt-search-options" value="Start search">
                     </div>
+                </div>
+            </form>
+        </div>
+        <div class="row" id="tweets-by-name-row">
+            <!-- Options for searching tweets based on names  (only visible on appropriate button click)-->
+            <div class="col-md-4" id="tweets-by-name-namefield">
+                <h3>Search tweets based on names</h3>
+                <form role="form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="add-tweetname-input">Add name: </label>
+                        <input type="text" id="add-tweetname-input" class="form-control">
+                        <a id="add-tweetname-button" role="button" class="btn btn-default">add name</a>
+                    </div>
                 </form>
+                <!-- button to clear textarea -->
+                <p><a class="btn btn-warning" href="#" role="button" id="btn-clear-tweetsbyname-textarea">Clear names</a></p>
             </div>
+            <form role="form" id="form-tweets-by-name-search-options">
+                <div class="col-md-4" id="tweets-by-name-options">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="all-names-textarea-tweetsbyname">All names: </label>
+                        <textarea id="all-names-textarea-tweetsbyname" class="form-control" rows="10" disabled="disabled" required="required"></textarea>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="searchapi-tweetsbyname-checkbox">Collect past tweets (7 days): </label>
+                        <input type="checkbox" value="checkbox" name="searchapi-tweetsbyname-checkbox" id="searchapi-tweetsbyname-checkbox">
+                    </div>
+                    <div class="form-group">
+                        <label for="streaming-tweetsbyname-checkbox">Start streaming search: </label>
+                        <input type="checkbox" value="checkbox" name="streaming-tweetsbyname-checkbox" id="streaming-tweetsbyname-checkbox">
+                    </div>
+                    <div class="form-group">
+                        <input type="submit" id="bt-tweetsbyname-start" value="Start search">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="row" id="tweets-by-searchterm-row">
+            <!-- Options for searching tweets based on names  (only visible on appropriate button click)-->
+            <div class="col-md-4" id="tweets-by-searchterm-namefield">
+                <h3>Search tweets based on search terms</h3>
+                <form role="form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="add-searchterm-input">Add name: </label>
+                        <input type="text" id="add-searchterm-input" class="form-control">
+                        <a id="add-searchterm-button" role="button" class="btn btn-default">add name</a>
+                    </div>
+                </form>
+                <!-- button to clear textarea -->
+                <p><a class="btn btn-warning" href="#" role="button" id="btn-clear-searchterms-textarea">Clear names</a></p>
+            </div>
+            <form role="form" id="form-tweets-by-searchterm-options">
+                <div class="col-md-4" id="tweets-by-searchterm-options">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="all-names-textarea-searchterms">All names: </label>
+                        <textarea id="all-names-textarea-searchterms" class="form-control" rows="10" disabled="disabled" required="required"></textarea>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="searchapi-searchterms-checkbox">Collect past tweets (7 days): </label>
+                        <input type="checkbox" value="checkbox" name="searchapi-searchterms-checkbox" id="searchapi-searchterms-checkbox">
+                    </div>
+                    <div class="form-group">
+                        <label for="streaming-searchterms-checkbox">Start streaming search: </label>
+                        <input type="checkbox" value="checkbox" name="streaming-searchterms-checkbox" id="streaming-searchterms-checkbox">
+                    </div>
+                    <div class="form-group">
+                        <input type="submit" id="bt-searchterms-start" value="Start search">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <!-- Show the tasks the user has started in the past -->
+        <div class="row">
+            <div class="col-md-12" id="tasks-row">
+                <h2>Tasks of {{ user.username }}</h2>
+                {% if not tasks %}
+                    No tasks
+                {% endif %}
+                {% for task in tasks %}
+                    <div class="well">{{ task }} </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="row">
+            <a id="refresh-tasks-button" role="button" class="btn btn-danger">refresh tasks</a>
         </div>
         <footer>
             <p>Sven Smets</p>
