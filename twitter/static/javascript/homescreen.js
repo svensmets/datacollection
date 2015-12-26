@@ -158,35 +158,82 @@ $(document).ready(function(){
     $("#btn-clear-tweetsbyname-textarea").click(function(){
         $("#all-names-textarea-tweetsbyname").val("");
     });
+    //start streaming search by name
+    $("#form-tweets-by-name-search-options").submit(function(event){
+        //stop form from submitting normally
+        event.preventDefault();
+        //gather all information
+        var names = $("#all-names-textarea-tweetsbyname").val();
+        if(names === ""){
+            //if textarea is empty, error message is shown for 2 seconds
+            $("#all-names-textarea-tweetsbyname").before('<p class="names-error-message" style="color:red;"><red>Must not be empty</p>');
+            setTimeout(function(){
+                $(".names-error-message").hide();
+            }, 2000);
+        }else{
+            //textarea has names, gather values of search options
+            var getSearchAPITweets = false;
+            var getStreamingTweets = false;
+            if($("#searchapi-tweetsbyname-checkbox").is(":checked")){
+                getSearchAPITweets = true;
+            }
+            if($("#streaming-tweetsbyname-checkbox").is(":checked")){
+                getStreamingTweets = true;
+            }
+            //data must be put in array and then stringified => otherwise error on post
+            var data = {names: names, getSearchApiTweets: getSearchAPITweets, getStreamingTweets : getStreamingTweets}
+            //http://api.jquery.com/jquery.post/
+            //post the from with ajax
+            $.post("/tweets_by_name_search/", JSON.stringify(data)).fail(function(){
+                alert("error");
+            });
+        }
+    });
     /*
     * SEARCH TWEETS BY SEARCHTERM
     * */
     $("#add-searchterm-button").click(function(){
         if($("#add-searchterm-input").val()){
-            var name = $("#add-searchterm-input").val();
-            $.get("/lookupname/", {name:name}, function(data){
-                var response = data['exists'];
-                if(response === 'true'){
-                    /*add name to textarea*/
-                    var allnames = $("#all-names-textarea-searchterms").val();
-                    $("#all-names-textarea-searchterms").val(allnames + name + ",");
-                    /*clear textfield*/
-                    $("#add-searchterm-input").val("");
-                    /*remove possible error message*/
-                    $("#error_usernotvalid").text("");
-                }else{
-                    $("#add-searchterm-input").after("<span id='error_usernotvalid'>user not valid</span>");
-                    /*clear textfield*/
-                    $("#add-searchterm-input").val("");
-                }
-            })
+            var searchTerm = $("#add-searchterm-input").val();
+            var allSearchTerms = $("#all-names-textarea-searchterms").val();
+            $("#all-names-textarea-searchterms").val(allSearchTerms + searchTerm + ",");
+            $("#add-searchterm-input").val("");
         }
     });
     //clear names of textarea tweets by name
     $("#btn-clear-searchterms-textarea").click(function(){
         $("#all-names-textarea-searchterms").val("");
     });
-
+    //start search
+    $("#form-tweets-by-searchterm-options").submit(function(event){
+        //stop form from submitting normally
+        event.preventDefault();
+        //gather all information from the input fields
+        var searchTerms = $("#all-names-textarea-searchterms").val();
+        if(searchTerms === ""){
+            //if textarea is empty, error message is shown for 2 seconds
+            $("#all-names-textarea-searchterms").before('<p class="names-error-message" style="color:red;"><red>Must not be empty</p>');
+            setTimeout(function(){
+                $(".names-error-message").hide();
+            }, 2000);
+        }else{
+            //textarea has names, gather values of search options
+            var getSearchAPITweets = false;
+            var getStreamingTweets = false;
+            if($("#searchapi-searchterms-checkbox").is(":checked")){
+                getSearchAPITweets = true;
+            }
+            if($("#streaming-searchterms-checkbox").is(":checked")){
+                getStreamingTweets = true;
+            }
+            //data must be put in array and then stringified => otherwise error on post
+            var data = {searchTerms: searchTerms, getSearchApiTweets: getSearchAPITweets, getStreamingTweets : getStreamingTweets};
+            //post the from with ajax
+            $.post("/tweets_by_searchterm_search/", JSON.stringify(data)).fail(function(){
+                alert("error");
+            })
+        }
+    });
     /*
     * Functions for security token
     * */
@@ -237,5 +284,4 @@ $(document).ready(function(){
                 // or any other URL that isn't scheme relative or absolute i.e relative.
             !(/^(\/\/|http:|https:).*/.test(url));
     }
-
 });

@@ -10,7 +10,10 @@ from django.views.generic import TemplateView
 from twitter.models import SearchTask
 from twitter.tweepy import TwitterTweepy
 from twitter.tasks import profile_information_search_task
-
+from twitter.tasks import start_tweets_by_name_streaming
+from twitter.tasks import start_tweets_searchterms_streaming
+from twitter.tasks import start_tweets_searchterms_searchapi
+from twitter.tasks import start_tweets_names_searchapi
 
 class HomescreenPage(TemplateView):
     """
@@ -95,10 +98,60 @@ def profile_information_search(request):
             search_task.save()
             return HttpResponseRedirect('/homescreen/')
 
+
 def tweets_by_name_search(request):
     """
     Start a streaming search of tweets based on a list of names
+    Start a search api search of tweets seven days in the past
     :param request:
     names = list of names for the filter in the search
     :return:
     """
+    if request.is_ajax():
+        if request.method == 'POST':
+            body_unicode = request.body.decode('utf-8')
+            body = json.loads(body_unicode)
+            names = body['names']
+            search_api_tweets = body['getSearchApiTweets']
+            streaming_tweets = body['getStreamingTweets']
+            print("Search api " + str(search_api_tweets))
+            if search_api_tweets:
+                names_list = str.split(names, ',')
+                start_tweets_names_searchapi.delay(names_list)
+            print("Streaming " + str(streaming_tweets))
+            # transform names list in userIds
+            # the names must be in a list for the lookup_users method
+            if streaming_tweets:
+                names_list = str.split(names, ',')
+                tweepy = TwitterTweepy()
+                # first get the ids of the screenames
+                ids = tweepy.get_ids_from_screennames(names_list)
+                print("ids count= " + str(len(ids)))
+                # note: to avoid error: changes to streaming.py in tweepy code was made
+                # https://github.com/tweepy/tweepy/issues/615
+                start_tweets_by_name_streaming.delay(ids)
+            return HttpResponseRedirect('/homescreen')
+
+
+def tweets_by_searchterm_search(request):
+    """
+    Start a streaming search of tweets based on a list of comma
+    separated serach terms
+    start a search api search of tweets seven days in the past
+    :param request:
+    :return:
+    """
+    if request.is_ajax():
+        if request.method == 'POST':
+            body_unicode = request.body.decode('utf-8')
+            body = json.loads(body_unicode)
+            searchterms = body['searchTerms']
+            search_api_tweets = body['getSearchApiTweets']
+            streaming_tweets = body['getStreamingTweets']
+            searchterm_list = str.split(searchterms, ',')
+            print("Streaming " + str(streaming_tweets))
+            if search_api_tweets:
+                start_tweets_searchterms_searchapi.delay(searchterm_list)
+            if streaming_tweets:
+                start_tweets_searchterms_streaming.delay(searchterm_list)
+            return HttpResponseRedirect('/homescreen')

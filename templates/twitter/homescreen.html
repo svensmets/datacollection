@@ -80,7 +80,7 @@
                 <form role="form">
                     {% csrf_token %}
                     <div class="form-group">
-                        <label for="add-tweetname-input">Add name: </label>
+                        <label for="add-tweetname-input">Add screenname to follow: </label>
                         <input type="text" id="add-tweetname-input" class="form-control">
                         <a id="add-tweetname-button" role="button" class="btn btn-default">add name</a>
                     </div>
@@ -112,25 +112,25 @@
             </form>
         </div>
         <div class="row" id="tweets-by-searchterm-row">
-            <!-- Options for searching tweets based on names  (only visible on appropriate button click)-->
+            <!-- Options for searching tweets based on search terms  (only visible on appropriate button click)-->
             <div class="col-md-4" id="tweets-by-searchterm-namefield">
                 <h3>Search tweets based on search terms</h3>
                 <form role="form">
                     {% csrf_token %}
                     <div class="form-group">
-                        <label for="add-searchterm-input">Add name: </label>
+                        <label for="add-searchterm-input">Add search term to track: </label>
                         <input type="text" id="add-searchterm-input" class="form-control">
-                        <a id="add-searchterm-button" role="button" class="btn btn-default">add name</a>
+                        <a id="add-searchterm-button" role="button" class="btn btn-default">add search term</a>
                     </div>
                 </form>
                 <!-- button to clear textarea -->
-                <p><a class="btn btn-warning" href="#" role="button" id="btn-clear-searchterms-textarea">Clear names</a></p>
+                <p><a class="btn btn-warning" href="#" role="button" id="btn-clear-searchterms-textarea">Clear search terms</a></p>
             </div>
             <form role="form" id="form-tweets-by-searchterm-options">
                 <div class="col-md-4" id="tweets-by-searchterm-options">
                     {% csrf_token %}
                     <div class="form-group">
-                        <label for="all-names-textarea-searchterms">All names: </label>
+                        <label for="all-names-textarea-searchterms">All search terms: </label>
                         <textarea id="all-names-textarea-searchterms" class="form-control" rows="10" disabled="disabled" required="required"></textarea>
                     </div>
                 </div>

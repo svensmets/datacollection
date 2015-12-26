@@ -1,8 +1,10 @@
 import itertools
 import tweepy
+import pytz
 from twitter.models import TwitterUser
 from twitter.models import TwitterList
 from twitter.models import Tweet
+
 
 class TwitterTweepy:
     """
@@ -22,8 +24,11 @@ class TwitterTweepy:
         :return Twitter API wrapper object
         """
         try:
-            auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
-            auth.set_access_token(self.access_token, self.access_token_secret)
+            # http://www.karambelkar.info/2015/01/how-to-use-twitters-search-rest-api-most-effectively./
+            # using appauthhandler instead of oauthhandler, should give higher limits as stated in above link
+            auth = tweepy.AppAuthHandler(self.consumer_key, self.consumer_secret)
+            # auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
+            # auth.set_access_token(self.access_token, self.access_token_secret)
             # Twitter API wrapper, with options to automatically wait for the rate limit
             return tweepy.API(auth, wait_on_rate_limit='true', wait_on_rate_limit_notify='true')
         except tweepy.TweepError:
@@ -42,8 +47,16 @@ class TwitterTweepy:
                 return True
         except tweepy.TweepError:
             print("Tweepy: Error in user_exists")
-
         return False
+
+    def get_id_of_user(self, username):
+        """
+        Get the id of a user by its username
+        :param username: the name of the user
+        :return: id of the user
+        """
+        user_for_id = self.api.get_user(username)
+        return user_for_id.id_str
 
     def profile_information_search(self, names, friends=False, followers=False, max_followers={},
                                    list_memberships=False, list_subscriptions=False):
@@ -129,7 +142,6 @@ class TwitterTweepy:
                         twitterlist.user_membership.add(ego_user)
 
 
-
         # Collect lists the ego user subscribes to
         if list_subscriptions:
             print("Collect list subscriptions")
@@ -143,6 +155,72 @@ class TwitterTweepy:
                                                   list_full_name=twitter_list.full_name)
                         twitterlist.save()
                         twitterlist.user_subscription.add(ego_user)
+
+    def get_tweets_searchterms_searchapi(self, query_params):
+        """
+        Get tweets of seven days in the past, based on a list of search terms (ex hashtags)
+        :param query: list of search terms
+        """
+        # using the Tweepy Cursor, there might be a memory leak that crashes the program
+        # TODO: check memory usage
+        # http://www.karambelkar.info/2015/01/how-to-use-twitters-search-rest-api-most-effectively./
+
+        # split the query into 10 keywords per query, they will will be connected with the OR operator
+        # remove empty strings from parameters
+        query_params = filter(None, query_params)
+        query_strings = list()
+        query_operator = " OR "
+        # if more than 10 params, multiple queries will be necessary
+        for params in self._paginate(query_params, 10):
+            # join max 10 parameters with the OR operator and add quotes
+            query_strings.append(query_operator.join('"{0}"'.format(param) for param in params))
+        # lookup the tweets in chunks of 10 params
+        for query_string in query_strings:
+            print("Get tweets based on query string: {0}".format(query_string))
+            for status in tweepy.Cursor(self.api.search, q=query_string).items():
+                self._save_tweet(status)
+            print("No more tweets for {0}".format(query_string))
+        print("End of search")
+
+    def get_tweets_names_searchapi(self, query_params):
+        """
+        Get tweets of seven days in the past, based on a list of usernames
+        :param query_params: list of user names
+        """
+        # add from: and to: to all usernames
+        query_params = filter(None, query_params)
+        query_strings = list()
+        query_operator_or = " OR "
+        query_operator_from = "from:"
+        query_operator_to = "to:"
+        for params in self._paginate(query_params, 5):
+            query_strings.append(query_operator_or.join('{0}{1} OR {2}{3}'
+                                                        .format(query_operator_from, param, query_operator_to, param)
+                                                        for param in params))
+        for query_string in query_strings:
+            print(query_string)
+            for status in tweepy.Cursor(self.api.search, q=query_string).items():
+                self._save_tweet(status)
+            print("No more tweets for {0}".format(query_string))
+        print("End of search")
+
+    def get_ids_from_screennames(self, screennames):
+        """
+        Returns the id of the screenname
+        :param screennames: a list of screennames
+        :return: a list of ids
+        """
+        # GET users/lookup
+        # Returns fully-hydrated user objects for up to 100 users per request,
+        # as specified by comma-separated values passed to the user_id and/or screen_name parameters.
+
+        # paginate in chunks of 100
+        ids_list = list()
+        for names in self._paginate(screennames, 100):
+            users = self.api.lookup_users(screen_names=names)
+            for user in users:
+                ids_list.append(user.id_str)
+        return ids_list
 
     def _saveusers(self, ids):
         """
@@ -189,9 +267,8 @@ class TwitterTweepy:
             if user.screen_name.lower() == name.lower():
                 return user
 
-
-class TweetsByNameStreamListener(tweepy.StreamListener):
-    def on_status(self, status):
+    def _save_tweet(self, status):
+        print("Tweet received: " + str(status.id))
         text_of_tweet = ""
         hashtags = ""
         urls = ""
@@ -207,15 +284,86 @@ class TweetsByNameStreamListener(tweepy.StreamListener):
             text_of_tweet = status.text
         # get mentions, urls & hashtags
         if hasattr(status, 'entities'):
-            for url in status.entities.expanded_url:
-                urls += url + delimiter
-            for hashtag in status.entities.hashtags:
-                hashtags += hashtag + delimiter
-            for mention in status.entities.user_mentions:
-                mentions += mention + delimiter
+            for hashtag in status.entities['hashtags']:
+                print(str(hashtag))
+                hashtags += hashtag['text'] + delimiter
+            for mention in status.entities['user_mentions']:
+                print(str(mention))
+                mentions += mention['screen_name'] + delimiter
+            for url in status.entities['urls']:
+                print(str(url))
+                urls += url['expanded_url'] + delimiter
+
+        # avoid a Runtimewarning: convert naive to non naive datetime
+        # TODO: still error maybe?
+        date_tweet = pytz.utc.localize(status.created_at)
         tweet = Tweet(tweet_id=status.id_str,
-                      tweeter_id=status.user.id, tweeter_name=status.user.screen_name,tweet_text=text_of_tweet,
-                      tweet_date=status.created_at, is_retweet=is_retweet,
+                      tweeter_id=status.user.id, tweeter_name=status.user.screen_name, tweet_text=text_of_tweet,
+                      tweet_date=date_tweet, is_retweet=is_retweet,
                       mentions=mentions, hashtags=hashtags, hyperlinks=urls)
         tweet.save()
 
+
+class TweetsStreamListener(tweepy.StreamListener):
+    """
+    Class for starting the stream api search based on names
+    http://www.brettdangerfield.com/post/realtime_data_tag_cloud/
+    http://www.rabbitmq.com/tutorials/tutorial-one-python.html
+    (21/12/2015)
+    """
+
+    def __init__(self, api):
+        self.api = api
+        super(tweepy.StreamListener, self).__init__()
+
+        # setup of rabbitMQ connection
+        # connection = pika.BlockingConnection(pika.ConnectionParameters(''))
+        # self.channel = connection.channel()
+        # args = {"x-max-length": 2000}
+        # self.channel.queue_declare(queue='twitter_toppic_feed', arguments=args)
+
+    def on_status(self, status):
+        self._save_tweet(status)
+
+    def on_error(self, status_code):
+        print("Error in streaming tweets by name: " + str(status_code))
+        # return True
+
+    def on_timeout(self):
+        print("timeout")
+        # return True
+
+    def _save_tweet(self, status):
+        print("Tweet received: " + str(status.id))
+        text_of_tweet = ""
+        hashtags = ""
+        urls = ""
+        mentions = ""
+        delimiter = ";"
+        is_retweet = False
+        # check is the tweet is a retweet
+        # if it is, add is_retweet = True and get the text from the original tweet (normal text is truncated)
+        if hasattr(status, 'retweeted_status'):
+            text_of_tweet = status.retweeted_status.text
+            is_retweet = True
+        else:
+            text_of_tweet = status.text
+        # get mentions, urls & hashtags
+        if hasattr(status, 'entities'):
+            for hashtag in status.entities['hashtags']:
+                print(str(hashtag))
+                hashtags += hashtag['text'] + delimiter
+            for mention in status.entities['user_mentions']:
+                print(str(mention))
+                mentions += mention['screen_name'] + delimiter
+            for url in status.entities['urls']:
+                print(str(url))
+                urls += url['expanded_url'] + delimiter
+
+        # avoid a Runtimewarning: convert naive to non naive datetime
+        date_tweet = pytz.utc.localize(status.created_at)
+        tweet = Tweet(tweet_id=status.id_str,
+                      tweeter_id=status.user.id, tweeter_name=status.user.screen_name, tweet_text=text_of_tweet,
+                      tweet_date=date_tweet, is_retweet=is_retweet,
+                      mentions=mentions, hashtags=hashtags, hyperlinks=urls)
+        tweet.save()

@@ -114,3 +114,14 @@ class Tweet(models.Model):
     mentions = models.CharField(max_length=200, blank=True)
     hashtags = models.CharField(max_length=200, blank=True)
     hyperlinks = models.CharField(max_length=200, blank=True)
+
+
+class TwitterKeys(models.Model):
+    """
+    The keys the user enters into the application to start a search
+    """
+    consumer_key = models.CharField(max_length=200)
+    consumer_secret = models.CharField(max_length=200)
+    access_token = models.CharField(max_length=200)
+    access_token_secret = models.CharField(max_length=200)
+    user = models.ForeignKey(TwitterUser)

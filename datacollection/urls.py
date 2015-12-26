@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.contrib import admin
-from twitter.views import HomescreenPage, profile_information_search
+from twitter.views import HomescreenPage, profile_information_search, tweets_by_name_search, tweets_by_searchterm_search
 from twitter.views import lookupname, get_tasks
 from user_profile.views import LoginPage, LogoutPage
 
@@ -27,4 +27,6 @@ urlpatterns = [
     url(r'^lookupname/$', lookupname, name='lookup_name'),
     url(r'^profile-information-search/$', profile_information_search, name='profile_information'),
     url(r'^get_tasks/$', get_tasks, name='get tasks'),
+    url(r'^tweets_by_name_search/$', tweets_by_name_search, name='tweets_by_name'),
+    url(r'^tweets_by_searchterm_search/$', tweets_by_searchterm_search, name='tweets_by_searchterm'),
 ]
