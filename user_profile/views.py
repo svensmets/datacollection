@@ -10,12 +10,12 @@ class LoginPage(FormView):
     Logs a user into the application if username and password is correct
     """
     def get(self, request):
-        '''Show login page'''
+        """Show login page"""
         form = LoginForm()
         return render(request, 'user_profile/login.html', {'form': form})
 
     def post(self, request):
-        '''Login user if valid password and username is submitted'''
+        """Login user if valid password and username is submitted"""
         form = LoginForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']

@@ -1,0 +1,22 @@
+<!-- Code from getbootstrap.com/examples/jumbotron/?# -->
+{% extends "base.html" %}
+{% load bootstrap3 %}
+{% load staticfiles %}
+{% block app_name %}
+    Overview
+{% endblock %}
+{% block content %}
+    <div class="jumbotron">
+        <div class="container">
+            <h3>Choose an app</h3>
+            <p><a class="btn btn-default" href="twitter" role="button" id="btn-to-twitter-app">Twitter &raquo;</a></p>
+        </div>
+    </div>
+        <footer>
+            <p>Sven Smets</p>
+        </footer>
+    </div>
+{% endblock %}
+{% block js %}
+    <script src="{% static 'overview/overview.js' %}"></script>
+{% endblock %}

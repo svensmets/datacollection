@@ -16,12 +16,16 @@ Including another URLconf
 from django.conf.urls import include, url
 from django.contrib import admin
 from twitter.views import HomescreenPage, profile_information_search, tweets_by_name_search, tweets_by_searchterm_search
-from twitter.views import lookupname, get_tasks
+from twitter.views import lookupname, get_tasks, AddTwitterKeys
 from user_profile.views import LoginPage, LogoutPage
+from overview.views import OverviewPage
 
 urlpatterns = [
+    url(r'^$', OverviewPage.as_view(), name='overview'),
     url(r'^admin/', include(admin.site.urls)),
     url(r'^homescreen/$', HomescreenPage.as_view(), name='homescreen'),
+    url(r'^twitter/$', HomescreenPage.as_view(), name='twitter'),
+    url(r'^addkeys/$', AddTwitterKeys.as_view(), name='add keys'),
     url(r'^login/$', LoginPage.as_view(), name='login'),
     url(r'^logout/$', LogoutPage.as_view(), name='logout'),
     url(r'^lookupname/$', lookupname, name='lookup_name'),

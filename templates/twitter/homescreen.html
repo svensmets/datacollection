@@ -1,7 +1,7 @@
 <!-- Code from getbootstrap.com/examples/jumbotron/?# -->
 {% extends "base.html" %}
 {% load bootstrap3 %}
-{% load static %}
+{% load staticfiles %}
 {% block app_name %}
     Homescreen
 {% endblock %}
@@ -170,5 +170,5 @@
     </div>
 {% endblock %}
 {% block js %}
-    <script src="{% static 'javascript/homescreen.js' %}"></script>
+    <script src="{% static 'twitter/homescreen.js' %}"></script>
 {% endblock %}

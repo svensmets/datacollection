@@ -46,6 +46,7 @@ INSTALLED_APPS = (
     'bootstrap3',
     'twitter',
     'user_profile',
+    'overview',
     'tweepy',
     'celery',
     'djcelery',

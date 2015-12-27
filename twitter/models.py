@@ -68,7 +68,7 @@ class SearchTask(models.Model):
     All searchtasks are shown on the homescreenpage
     """
     user = models.ForeignKey(User, null=True)
-    task = models.CharField(max_length=250,null=True)
+    task = models.CharField(max_length=250, null=True)
     objects = TaskManager()
 
 
@@ -124,4 +124,7 @@ class TwitterKeys(models.Model):
     consumer_secret = models.CharField(max_length=200)
     access_token = models.CharField(max_length=200)
     access_token_secret = models.CharField(max_length=200)
-    user = models.ForeignKey(TwitterUser)
+    user = models.ForeignKey(User)
+
+
+

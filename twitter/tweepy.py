@@ -10,12 +10,10 @@ class TwitterTweepy:
     """
     Access to twitter API with Tweepy library
     """
-    consumer_key = "Vuh03kAwNIJm7Nb769szVgLOC"
-    consumer_secret = "KB8JUp6wGqt3S4E3QvhiDM2KQeITPTyq3imYBrIl7nyahSNWOh"
-    access_token = "297349951-BnxwnjhigMxTDB0wdRqQNL5EBma6ROpduvPJxYBS"
-    access_token_secret = "mt2TyQzOOu6g6uGxbhuFIhh5Y0nkNW01txxdTtHrsEE2E"
-
-    def __init__(self):
+    def __init__(self, keys, authentication='app_level'):
+        self.keys = keys
+        # user app level authentication default, except for streaming (gives 401 error)
+        self.authentication = authentication
         self.api = self.authenticate()
 
     def authenticate(self):
@@ -23,27 +21,28 @@ class TwitterTweepy:
         Authenticate with Twitter API
         :return Twitter API wrapper object
         """
-        try:
-            # http://www.karambelkar.info/2015/01/how-to-use-twitters-search-rest-api-most-effectively./
-            # using appauthhandler instead of oauthhandler, should give higher limits as stated in above link
-            auth = tweepy.AppAuthHandler(self.consumer_key, self.consumer_secret)
-            # auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
-            # auth.set_access_token(self.access_token, self.access_token_secret)
-            # Twitter API wrapper, with options to automatically wait for the rate limit
-            return tweepy.API(auth, wait_on_rate_limit='true', wait_on_rate_limit_notify='true')
-        except tweepy.TweepError:
-            print("Error in authentication")
+        # http://www.karambelkar.info/2015/01/how-to-use-twitters-search-rest-api-most-effectively./
+        # using appauthhandler instead of oauthhandler, should give higher limits as stated in above link
+        if self.authentication == 'app_level':
+            # use app level authentication default
+            auth = tweepy.AppAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
+        elif self.authentication == 'user_level':
+            # use user level authentication for streaming
+            auth = tweepy.OAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
+            auth.set_access_token(self.keys.access_token, self.keys.access_token_secret)
+        # Twitter API wrapper, with options to automatically wait for the rate limit
+        return tweepy.API(auth, wait_on_rate_limit='true', wait_on_rate_limit_notify='true')
 
-    def user_exists(self, screenName):
+    def user_exists(self, screen_name):
         """
         Check whether a name is a valid twitter username or not
-        :param screenName: name to check
+        :param screen_name: name to check
         :return: true if valid username, false if invalid username
         """
         try:
-            user_to_check = self.api.get_user(screenName)
-            print(user_to_check.screen_name + ", " + screenName)
-            if user_to_check.screen_name.lower() == screenName.lower():
+            user_to_check = self.api.get_user(screen_name)
+            print(user_to_check.screen_name + ", " + screen_name)
+            if user_to_check.screen_name.lower() == screen_name.lower():
                 return True
         except tweepy.TweepError:
             print("Tweepy: Error in user_exists")
@@ -140,7 +139,6 @@ class TwitterTweepy:
                                                   list_full_name=twitter_list.full_name)
                         twitterlist.save()
                         twitterlist.user_membership.add(ego_user)
-
 
         # Collect lists the ego user subscribes to
         if list_subscriptions:

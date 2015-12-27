@@ -1,40 +1,81 @@
 from django.contrib.auth.decorators import login_required
 import json
 from django.http import HttpResponse, HttpResponseRedirect
-from django.core import serializers
-from twitter.forms import NamesTextAreaForm
-from twitter.forms import SearchOptionsForm
+from twitter.forms import NamesTextAreaForm, SearchOptionsForm, AddTwitterKeysForm
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
-from django.views.generic import TemplateView
-from twitter.models import SearchTask
+from django.views.generic import TemplateView, View
+from twitter.models import SearchTask, TwitterKeys
 from twitter.tweepy import TwitterTweepy
 from twitter.tasks import profile_information_search_task
 from twitter.tasks import start_tweets_by_name_streaming
 from twitter.tasks import start_tweets_searchterms_streaming
 from twitter.tasks import start_tweets_searchterms_searchapi
 from twitter.tasks import start_tweets_names_searchapi
+from twitter.util import get_twitter_keys
+from tweepy import TweepError
+
 
 class HomescreenPage(TemplateView):
     """
     Page shows the current tasks the user has running and show options to start a search
     """
+
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         user = request.user
-        tasks = SearchTask.objects.get_task_of_user_in_string_format(user)
-        add_names_form = NamesTextAreaForm
-        all_names_form = NamesTextAreaForm
-        search_options_form = SearchOptionsForm
-        return render(request, "twitter/homescreen.html", {'tasks': tasks, 'add_names_form': add_names_form,
-                                                           'all_names_form': all_names_form,
-                                                           'search_options_form': search_options_form})
+        keys = get_twitter_keys(user)
+        if keys is False:
+            return HttpResponseRedirect('/addkeys/')
+        else:
+            tasks = SearchTask.objects.get_task_of_user_in_string_format(user)
+            add_names_form = NamesTextAreaForm
+            all_names_form = NamesTextAreaForm
+            search_options_form = SearchOptionsForm
+            return render(request, "twitter/homescreen.html", {'tasks': tasks, 'add_names_form': add_names_form,
+                                                               'all_names_form': all_names_form,
+                                                               'search_options_form': search_options_form})
 
     @method_decorator(login_required)
     def post(self, request):
         user = request.user
         tasks = SearchTask.objects.get_task_of_user_in_string_format(user)
         return render(request, "twitter/homescreen.html", {'tasks': tasks})
+
+
+class AddTwitterKeys(View):
+    """
+    Shows the page to add keys to the database
+    """
+
+    @method_decorator(login_required)
+    def get(self, request):
+        add_keys_form = AddTwitterKeysForm
+        return render(request, "twitter/addkeys.html", {'add_keys_form': add_keys_form})
+
+    @method_decorator(login_required)
+    def post(self, request):
+        form = AddTwitterKeysForm(request.POST)
+        user = request.user
+        if form.is_valid():
+            consumer_key = form.cleaned_data['consumer_key']
+            consumer_secret = form.cleaned_data['consumer_secret']
+            access_token = form.cleaned_data['access_token']
+            access_token_secret = form.cleaned_data['access_token_secret']
+            keys = TwitterKeys(consumer_key=consumer_key, consumer_secret=consumer_secret, access_token=access_token,
+                               access_token_secret=access_token_secret, user=user)
+            try:
+                # test validity keys
+                tweepy = TwitterTweepy(keys)
+                # save if keys valid
+                keys.save()
+                return render(request, 'twitter/homescreen.html')
+            except TweepError:
+                return render(request, 'twitter/addkeys.html',
+                              {'error_message': 'Keys is not valid', 'add_keys_form': form})
+        else:
+            return render(request, 'twitter/addkeys.html',
+                          {'error_message': 'Form is not valid', 'add_keys_form': form})
 
 
 def lookupname(request):
@@ -46,12 +87,17 @@ def lookupname(request):
     :return: true if valid username, false if not
     """
     if request.method == 'GET':
-        name = request.GET.get('name', '')
-        twitter = TwitterTweepy()
-        if twitter.user_exists(name):
-            return HttpResponse(json.dumps({'exists': 'true'}), content_type='application/json')
+        user = request.user
+        keys = get_twitter_keys(user)
+        if keys is False:
+            return HttpResponseRedirect('/addkeys/')
         else:
-            return HttpResponse(json.dumps({'exists': 'false'}), content_type='application/json')
+            name = request.GET.get('name', '')
+            twitter = TwitterTweepy(keys)
+            if twitter.user_exists(name):
+                return HttpResponse(json.dumps({'exists': 'true'}), content_type='application/json')
+            else:
+                return HttpResponse(json.dumps({'exists': 'false'}), content_type='application/json')
 
 
 def get_tasks(request):
@@ -81,22 +127,28 @@ def profile_information_search(request):
         if request.method == 'POST':
             # http://stackoverflow.com/questions/29780060/trying-to-parse-request-body-from-post-in-django
             # json.loads() only accepts a unicode string, so it must be decoded before passing it to json.loads()
-            body_unicode = request.body.decode('utf-8')
-            body = json.loads(body_unicode)
-            names = body['names']
-            followers = body['followers']
-            friends = body['friends']
-            max_followers = body['maxfollowers']
-            list_memberships = body['listmemberships']
-            list_subscriptions = body['listsubscriptions']
-            # start search task
-            params = {'friends': friends, 'followers': followers, 'max_followers': max_followers,
-                      'list_memberships': list_memberships, 'list_subscriptions': list_subscriptions}
-            status = profile_information_search_task.delay(names, **params)
-            # bind task to user and store in db
-            search_task = SearchTask(user=request.user, task=status.task_id)
-            search_task.save()
-            return HttpResponseRedirect('/homescreen/')
+            user = request.user
+            keys = get_twitter_keys(user)
+            if keys is False:
+                return HttpResponseRedirect('/addkeys/')
+            else:
+                body_unicode = request.body.decode('utf-8')
+                body = json.loads(body_unicode)
+                names = body['names']
+                followers = body['followers']
+                friends = body['friends']
+                max_followers = body['maxfollowers']
+                list_memberships = body['listmemberships']
+                list_subscriptions = body['listsubscriptions']
+                # start search task
+                params = {'friends': friends, 'followers': followers, 'max_followers': max_followers,
+                          'list_memberships': list_memberships, 'list_subscriptions': list_subscriptions}
+                # user id param necessary because user or keys not serializable
+                status = profile_information_search_task.delay(names=names, user_id=user.id, **params)
+                # bind task to user and store in db
+                search_task = SearchTask(user=request.user, task=status.task_id)
+                search_task.save()
+                return HttpResponseRedirect('/homescreen/')
 
 
 def tweets_by_name_search(request):
@@ -109,28 +161,35 @@ def tweets_by_name_search(request):
     """
     if request.is_ajax():
         if request.method == 'POST':
-            body_unicode = request.body.decode('utf-8')
-            body = json.loads(body_unicode)
-            names = body['names']
-            search_api_tweets = body['getSearchApiTweets']
-            streaming_tweets = body['getStreamingTweets']
-            print("Search api " + str(search_api_tweets))
-            if search_api_tweets:
-                names_list = str.split(names, ',')
-                start_tweets_names_searchapi.delay(names_list)
-            print("Streaming " + str(streaming_tweets))
-            # transform names list in userIds
-            # the names must be in a list for the lookup_users method
-            if streaming_tweets:
-                names_list = str.split(names, ',')
-                tweepy = TwitterTweepy()
-                # first get the ids of the screenames
-                ids = tweepy.get_ids_from_screennames(names_list)
-                print("ids count= " + str(len(ids)))
-                # note: to avoid error: changes to streaming.py in tweepy code was made
-                # https://github.com/tweepy/tweepy/issues/615
-                start_tweets_by_name_streaming.delay(ids)
-            return HttpResponseRedirect('/homescreen')
+            user = request.user
+            keys = get_twitter_keys(user)
+            if keys is False:
+                return HttpResponseRedirect('/addkeys/')
+            else:
+                body_unicode = request.body.decode('utf-8')
+                body = json.loads(body_unicode)
+                names = body['names']
+                search_api_tweets = body['getSearchApiTweets']
+                streaming_tweets = body['getStreamingTweets']
+                print("Search api " + str(search_api_tweets))
+                if search_api_tweets:
+                    names_list = str.split(names, ',')
+                    # user id param necessary because user or keys not serializable
+                    start_tweets_names_searchapi.delay(names_list=names_list, user_id=user.id)
+                print("Streaming " + str(streaming_tweets))
+                # transform names list in userIds
+                # the names must be in a list for the lookup_users method
+                if streaming_tweets:
+                    names_list = str.split(names, ',')
+                    tweepy = TwitterTweepy(keys=keys)
+                    # first get the ids of the screenames
+                    ids = tweepy.get_ids_from_screennames(names_list)
+                    print("ids count= " + str(len(ids)))
+                    # note: to avoid error: changes to streaming.py in tweepy code was made
+                    # https://github.com/tweepy/tweepy/issues/615
+                    # user id param necessary because user or keys not serializable
+                    start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id)
+                return HttpResponseRedirect('/homescreen')
 
 
 def tweets_by_searchterm_search(request):
@@ -143,15 +202,22 @@ def tweets_by_searchterm_search(request):
     """
     if request.is_ajax():
         if request.method == 'POST':
-            body_unicode = request.body.decode('utf-8')
-            body = json.loads(body_unicode)
-            searchterms = body['searchTerms']
-            search_api_tweets = body['getSearchApiTweets']
-            streaming_tweets = body['getStreamingTweets']
-            searchterm_list = str.split(searchterms, ',')
-            print("Streaming " + str(streaming_tweets))
-            if search_api_tweets:
-                start_tweets_searchterms_searchapi.delay(searchterm_list)
-            if streaming_tweets:
-                start_tweets_searchterms_streaming.delay(searchterm_list)
-            return HttpResponseRedirect('/homescreen')
+            user = request.user
+            keys = get_twitter_keys(user)
+            if keys is False:
+                return HttpResponseRedirect('/addkeys/')
+            else:
+                body_unicode = request.body.decode('utf-8')
+                body = json.loads(body_unicode)
+                searchterms = body['searchTerms']
+                search_api_tweets = body['getSearchApiTweets']
+                streaming_tweets = body['getStreamingTweets']
+                searchterm_list = str.split(searchterms, ',')
+                print("Streaming " + str(streaming_tweets))
+                if search_api_tweets:
+                    # user id param necessary because user or keys not serializable
+                    start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id)
+                if streaming_tweets:
+                    # user id param necessary because user or keys not serializable
+                    start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id)
+                return HttpResponseRedirect('/homescreen')
