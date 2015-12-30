@@ -21,6 +21,22 @@ $(document).ready(function(){
         $("#tweets-by-name-row").fadeOut();
         $("#tweets-by-searchterm-row").fadeIn();
     });
+
+    //if streaming options are checked, number of days must be set to required
+    $("#streaming-searchterms-checkbox").change(function(){
+        if($("#streaming-searchterms-checkbox").is(":checked")){
+            $("#nr-days-searchterms-streaming").prop("required", true);
+        }else{
+            $("#nr-days-searchterms-streaming").prop("required", false);
+        }
+    });
+    $("#streaming-tweetsbyname-checkbox").change(function(){
+        if($("#streaming-tweetsbyname-checkbox").is(":checked")){
+            $("#nr-days-names-streaming").prop("required", true);
+        }else{
+            $("#nr-days-names-streaming").prop("required", false);
+        }
+    });
     /*
     * REFRESH TASKS
     * */
@@ -97,6 +113,7 @@ $(document).ready(function(){
             var friendChecked = false;
             var listMembershipsChecked = false;
             var listSubscriptionsChecked = false;
+            var relationshipsChecked = false;
             var maxFollowers = $("#max-followers-input").val() ;
             if(!maxFollowers){
                 maxFollowers = 110000;
@@ -113,10 +130,13 @@ $(document).ready(function(){
             if($("#list-subscriptions-checkbox").is(":checked")){
                 listSubscriptionsChecked = true;
             }
+            if($("#relationships-checkbox").is(":checked")){
+                relationshipsChecked = true;
+            }
             //data must be put in array and then stringified => otherwise error on post
             var data = {names: names, followers: followersChecked, friends: friendChecked,
                 listmemberships: listMembershipsChecked, listsubscriptions: listSubscriptionsChecked,
-                maxfollowers: maxFollowers}
+                maxfollowers: maxFollowers, relationshipschecked: relationshipsChecked}
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
             $.post("/profile-information-search/", JSON.stringify(data)).fail(function(){
@@ -223,8 +243,9 @@ $(document).ready(function(){
             if($("#searchapi-searchterms-checkbox").is(":checked")){
                 getSearchAPITweets = true;
             }
-            if($("#streaming-searchterms-checkbox").is(":checked")){
+            if($("#streaming-searchterms-checkbox").is(":checked")) {
                 getStreamingTweets = true;
+                var nrOfDays = $("#nr-days-searchterms-streaming").val();
             }
             //data must be put in array and then stringified => otherwise error on post
             var data = {searchTerms: searchTerms, getSearchApiTweets: getSearchAPITweets, getStreamingTweets : getStreamingTweets};

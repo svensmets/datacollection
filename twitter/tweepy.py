@@ -1,8 +1,7 @@
 import itertools
 import tweepy
 import pytz
-from twitter.models import TwitterUser
-from twitter.models import TwitterList
+from twitter.models import TwitterUser, TwitterList, TwitterRelationship
 from twitter.models import Tweet
 
 
@@ -10,6 +9,7 @@ class TwitterTweepy:
     """
     Access to twitter API with Tweepy library
     """
+
     def __init__(self, keys, authentication='app_level'):
         self.keys = keys
         # user app level authentication default, except for streaming (gives 401 error)
@@ -23,6 +23,7 @@ class TwitterTweepy:
         """
         # http://www.karambelkar.info/2015/01/how-to-use-twitters-search-rest-api-most-effectively./
         # using appauthhandler instead of oauthhandler, should give higher limits as stated in above link
+        """
         if self.authentication == 'app_level':
             # use app level authentication default
             auth = tweepy.AppAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
@@ -31,6 +32,10 @@ class TwitterTweepy:
             auth = tweepy.OAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
             auth.set_access_token(self.keys.access_token, self.keys.access_token_secret)
         # Twitter API wrapper, with options to automatically wait for the rate limit
+        return tweepy.API(auth, wait_on_rate_limit='true', wait_on_rate_limit_notify='true')
+        """
+        auth = tweepy.OAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
+        auth.set_access_token(self.keys.access_token, self.keys.access_token_secret)
         return tweepy.API(auth, wait_on_rate_limit='true', wait_on_rate_limit_notify='true')
 
     def user_exists(self, screen_name):
@@ -57,9 +62,12 @@ class TwitterTweepy:
         user_for_id = self.api.get_user(username)
         return user_for_id.id_str
 
-    def profile_information_search(self, names, friends=False, followers=False, max_followers={},
-                                   list_memberships=False, list_subscriptions=False):
-        """ :Start Profile Information Search
+    def profile_information_search(self, names, task_id, friends=False, followers=False, max_followers={},
+                                   list_memberships=False, list_subscriptions=False, relationships_checked=False):
+        """ Collect the information needed to build a relationship network
+            The full user objects of the friends and followers of a list of usernames is collected
+            The total number of friends and followers is calculated
+            The lowest number (friends or followers) is used to build the relationship table
             :param names: comma separated list of EGO names entered by user
             :param friends: boolean Friends lookup yes or no
             :param followers: boolean Followers lookup yes or no
@@ -74,22 +82,30 @@ class TwitterTweepy:
               .format(friends, followers, max_followers, list_memberships, list_subscriptions))
         # list of ego_users as TwitterUser-objects
         list_ego_users = list()
-        # convert names entered to twitter users objects and store
+        # list with all EGO-users and the friends and followers of this ego users
+        list_total_users = list()
+        # convert names of EGO-users to twitter users objects and store
         for name in names_list:
             # string cannot not be empty
             if name:
                 try:
                     user = self.api.get_user(name)
                     twitter_user = TwitterUser(user_id=user.id, name=user.name, screen_name=user.screen_name,
-                                               friends_count=user.friends_count, followers_count=user.followers_count)
+                                               friends_count=user.friends_count, followers_count=user.followers_count,
+                                               task_id=task_id, is_protected=user.protected)
                     if user.followers_count > max_followers:
-                        # exclude EGO-user if it has to many followers
+                        # exclude EGO-user if too many followers
                         print("{} has too many followers".format(name))
                         twitter_user.max_followers_exceeded = True
                         names_list.remove(name)
+                    elif user.protected:
+                        # remove users with a protected account
+                        print("Removing user {0} because of protected account".format(name))
+                        names_list.remove(name)
+                    else:
+                        list_ego_users.append(twitter_user)
+                        list_total_users.append(twitter_user)
                     twitter_user.save()
-                    # used for getting the id in list memberships and list subscriptions
-                    list_ego_users.append(twitter_user)
                 except tweepy.TweepError:
                     print("Error in profile_information_search: error get username EGO-user")
         # Collect friends of ego-users
@@ -107,7 +123,7 @@ class TwitterTweepy:
                         ids.append(friend_id)
                     # get user objects from friend-ids and store in database
                     for page in self._paginate(ids, 100):
-                        self._saveusers(page)
+                        self._save_users(page, task_id, list_total_users)
 
         # Collect followers of ego users
         if followers:
@@ -122,7 +138,7 @@ class TwitterTweepy:
                         ids.append(follower_id)
                     # get user objects from follower-ids and store in database
                     for page in self._paginate(ids, 100):
-                        self._saveusers(page)
+                        self._save_users(page, task_id, list_total_users)
 
         # Collect lists the ego users are members of
         if list_memberships:
@@ -136,7 +152,7 @@ class TwitterTweepy:
                         # for a many to many relationship, the object has to be saved first,
                         # then the relationship can be added
                         twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
-                                                  list_full_name=twitter_list.full_name)
+                                                  list_full_name=twitter_list.full_name, task_id=task_id)
                         twitterlist.save()
                         twitterlist.user_membership.add(ego_user)
 
@@ -150,14 +166,55 @@ class TwitterTweepy:
                     print(name, list_ego_users)
                     for twitter_list in tweepy.Cursor(self.api.lists_subscriptions, screen_name=name).items():
                         twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
-                                                  list_full_name=twitter_list.full_name)
+                                                  list_full_name=twitter_list.full_name, task_id=task_id)
                         twitterlist.save()
                         twitterlist.user_subscription.add(ego_user)
+        # list with all ids of the EGO-users, and friends and followers (to speed up lookup later)
+        if relationships_checked:
+            list_total_users_ids = set()
+            for user in list_total_users:
+                list_total_users_ids.add(user.user_id)
+            # Compare the total number of friends, and the total number of followers
+            # The lowest number will be used to build the relationship table
+            total_friends = 0
+            total_followers = 0
+            print("Total number of users: {0}".format(len(list_total_users)))
+            for user in list_total_users:
+                total_friends += user.friends_count
+                total_followers += user.followers_count
+            if total_friends <= total_followers:
+                print("Build relationships based on friends")
+                # build friends relationshis if the total number of friends is lower or equal to the followers count
+                for user in list_total_users:
+                    list_ids = list()
+                    # collect all friends ids of the user
+                    for user_id in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).items():
+                        list_ids.append(user_id)
+                    for user_id in list_ids:
+                        if user_id in list_total_users_ids and user_id != user.user_id:
+                            relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
+                                                           relation_used="friends")
+                            relation.save()
+            else:
+                print("Build relationships based on followers")
+                # build followers relationships if the total numbert of followers is lower than
+                for user in list_total_users:
+                    list_ids = list()
+                    # collect all follower ids of the user
+                    for user_id in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).items():
+                        list_ids.append(user_id)
+                    for user_id in list_ids:
+                        if user_id in list_total_users_ids and user_id != user.user_id:
+                            relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
+                                                           relation_used="followers")
+                            relation.save()
+            print("Relationships done. End of search")
 
-    def get_tweets_searchterms_searchapi(self, query_params):
+    def get_tweets_searchterms_searchapi(self, query_params, task_id):
         """
         Get tweets of seven days in the past, based on a list of search terms (ex hashtags)
         :param query: list of search terms
+        :param task_id: the id of the current task, used to identify the data in the database
         """
         # using the Tweepy Cursor, there might be a memory leak that crashes the program
         # TODO: check memory usage
@@ -176,14 +233,15 @@ class TwitterTweepy:
         for query_string in query_strings:
             print("Get tweets based on query string: {0}".format(query_string))
             for status in tweepy.Cursor(self.api.search, q=query_string).items():
-                self._save_tweet(status)
+                self._save_tweet(status=status, task_id=task_id)
             print("No more tweets for {0}".format(query_string))
         print("End of search")
 
-    def get_tweets_names_searchapi(self, query_params):
+    def get_tweets_names_searchapi(self, query_params, task_id):
         """
         Get tweets of seven days in the past, based on a list of usernames
         :param query_params: list of user names
+        :param task_id: the id of the current task, used to identify the data in the database
         """
         # add from: and to: to all usernames
         query_params = filter(None, query_params)
@@ -198,7 +256,7 @@ class TwitterTweepy:
         for query_string in query_strings:
             print(query_string)
             for status in tweepy.Cursor(self.api.search, q=query_string).items():
-                self._save_tweet(status)
+                self._save_tweet(status=status, task_id=task_id)
             print("No more tweets for {0}".format(query_string))
         print("End of search")
 
@@ -220,17 +278,21 @@ class TwitterTweepy:
                 ids_list.append(user.id_str)
         return ids_list
 
-    def _saveusers(self, ids):
+    def _save_users(self, ids, task_id, user_list):
         """
-        converts a hundred ids of users to objects and saves them
+        converts a hundred ids of users to objects, saves them and adds them to a list
         :param ids: max 100
+        :param task_id: the id of the current task, used to identify the data in the database
+        :param user_list: a list the users will be added to
         """
         users = self.api.lookup_users(user_ids=ids)
         for user in users:
             twitter_user = TwitterUser(user_id=user.id, name=user.name, screen_name=user.screen_name,
                                        friends_count=user.friends_count,
-                                       followers_count=user.followers_count)
+                                       followers_count=user.followers_count, task_id=task_id)
+
             twitter_user.save()
+            user_list.append(twitter_user)
 
     def _paginate(self, iterable, page_size):
         """
@@ -265,7 +327,12 @@ class TwitterTweepy:
             if user.screen_name.lower() == name.lower():
                 return user
 
-    def _save_tweet(self, status):
+    def _save_tweet(self, status, task_id):
+        """
+        saves a tweet into the database
+        :param status: the tweet
+        :param task_id: the id of the current task, used to identify the data in the database
+        """
         print("Tweet received: " + str(status.id))
         text_of_tweet = ""
         hashtags = ""
@@ -298,7 +365,7 @@ class TwitterTweepy:
         tweet = Tweet(tweet_id=status.id_str,
                       tweeter_id=status.user.id, tweeter_name=status.user.screen_name, tweet_text=text_of_tweet,
                       tweet_date=date_tweet, is_retweet=is_retweet,
-                      mentions=mentions, hashtags=hashtags, hyperlinks=urls)
+                      mentions=mentions, hashtags=hashtags, hyperlinks=urls, task_id=task_id)
         tweet.save()
 
 
@@ -310,8 +377,9 @@ class TweetsStreamListener(tweepy.StreamListener):
     (21/12/2015)
     """
 
-    def __init__(self, api):
+    def __init__(self, api, task_id):
         self.api = api
+        self.task_id = task_id
         super(tweepy.StreamListener, self).__init__()
 
         # setup of rabbitMQ connection
@@ -321,7 +389,7 @@ class TweetsStreamListener(tweepy.StreamListener):
         # self.channel.queue_declare(queue='twitter_toppic_feed', arguments=args)
 
     def on_status(self, status):
-        self._save_tweet(status)
+        self._save_tweet(status=status, task_id=self.task_id)
 
     def on_error(self, status_code):
         print("Error in streaming tweets by name: " + str(status_code))
@@ -331,7 +399,7 @@ class TweetsStreamListener(tweepy.StreamListener):
         print("timeout")
         # return True
 
-    def _save_tweet(self, status):
+    def _save_tweet(self, status, task_id):
         print("Tweet received: " + str(status.id))
         text_of_tweet = ""
         hashtags = ""
@@ -363,5 +431,5 @@ class TweetsStreamListener(tweepy.StreamListener):
         tweet = Tweet(tweet_id=status.id_str,
                       tweeter_id=status.user.id, tweeter_name=status.user.screen_name, tweet_text=text_of_tweet,
                       tweet_date=date_tweet, is_retweet=is_retweet,
-                      mentions=mentions, hashtags=hashtags, hyperlinks=urls)
+                      mentions=mentions, hashtags=hashtags, hyperlinks=urls, task_id=task_id)
         tweet.save()

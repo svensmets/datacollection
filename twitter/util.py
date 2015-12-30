@@ -46,4 +46,3 @@ def get_twitter_keys_with_user_id(user_id):
     except ObjectDoesNotExist:
         return False
 
-

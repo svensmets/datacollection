@@ -87,6 +87,7 @@ class TwitterUser(models.Model):
     # when the twitteruser has too many followers, account is ignored
     max_followers_exceeded = models.BooleanField(default=False)
     # date_added = models.DateTimeField(auto_now=True)
+    task_id = models.CharField(max_length=250)
 
 
 class TwitterList(models.Model):
@@ -99,6 +100,7 @@ class TwitterList(models.Model):
     list_full_name = models.CharField(max_length=200)
     user_membership = models.ManyToManyField(TwitterUser, related_name="list_membership", blank=True)
     user_subscription = models.ManyToManyField(TwitterUser, related_name="list_subscription", blank=True)
+    task_id = models.CharField(max_length=250)
 
 
 class Tweet(models.Model):
@@ -114,6 +116,7 @@ class Tweet(models.Model):
     mentions = models.CharField(max_length=200, blank=True)
     hashtags = models.CharField(max_length=200, blank=True)
     hyperlinks = models.CharField(max_length=200, blank=True)
+    task_id = models.CharField(max_length=250)
 
 
 class TwitterKeys(models.Model):
@@ -127,4 +130,10 @@ class TwitterKeys(models.Model):
     user = models.ForeignKey(User)
 
 
-
+class TwitterRelationship(models.Model):
+    """
+    Relationship between two Twitter Users
+    """
+    from_user_id = models.BigIntegerField()
+    to_user_id = models.BigIntegerField()
+    relation_used = models.CharField(max_length=100)

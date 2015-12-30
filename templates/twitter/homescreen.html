@@ -68,6 +68,10 @@
                         <input type="checkbox" value="checkbox" name="list-subscriptions-checkbox" id="list-subscriptions-checkbox">
                     </div>
                     <div class="form-group">
+                        <label for="relationships-checkbox">Collect full ego network</label>
+                        <input type="checkbox" value="checkbox" name="relationships-checkbox" id="relationships-checkbox"/>
+                    </div>
+                    <div class="form-group">
                         <input type="submit" id="bt-search-options" value="Start search">
                     </div>
                 </div>
@@ -106,6 +110,10 @@
                         <input type="checkbox" value="checkbox" name="streaming-tweetsbyname-checkbox" id="streaming-tweetsbyname-checkbox">
                     </div>
                     <div class="form-group">
+                        <label for="nr-days-names-streaming">Stream running for nr of days: </label>
+                        <input type="number" id="nr-days-names-streaming" value="1" max="7" class="form-control"/>
+                    </div>
+                    <div class="form-group">
                         <input type="submit" id="bt-tweetsbyname-start" value="Start search">
                     </div>
                 </div>
@@ -142,6 +150,10 @@
                     <div class="form-group">
                         <label for="streaming-searchterms-checkbox">Start streaming search: </label>
                         <input type="checkbox" value="checkbox" name="streaming-searchterms-checkbox" id="streaming-searchterms-checkbox">
+                    </div>
+                    <div class="form-group">
+                        <label for="nr-days-searchterms-streaming">Stream running for nr of days: </label>
+                        <input type="number" id="nr-days-searchterms-streaming" value="1" max="7" class="form-control"/>
                     </div>
                     <div class="form-group">
                         <input type="submit" id="bt-searchterms-start" value="Start search">
