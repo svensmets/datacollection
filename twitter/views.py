@@ -173,6 +173,7 @@ def tweets_by_name_search(request):
                 names = body['names']
                 search_api_tweets = body['getSearchApiTweets']
                 streaming_tweets = body['getStreamingTweets']
+                nr_of_days = body['nrOfDays']
                 print("Search api " + str(search_api_tweets))
                 if search_api_tweets:
                     names_list = str.split(names, ',')
@@ -190,7 +191,7 @@ def tweets_by_name_search(request):
                     # note: to avoid error: changes to streaming.py in tweepy code was made
                     # https://github.com/tweepy/tweepy/issues/615
                     # user id param necessary because user or keys not serializable
-                    start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id)
+                    start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id, nr_of_days=nr_of_days)
                 return HttpResponseRedirect('/homescreen')
 
 
@@ -214,6 +215,7 @@ def tweets_by_searchterm_search(request):
                 searchterms = body['searchTerms']
                 search_api_tweets = body['getSearchApiTweets']
                 streaming_tweets = body['getStreamingTweets']
+                nr_of_days = body['nrOfDays']
                 searchterm_list = str.split(searchterms, ',')
                 print("Streaming " + str(streaming_tweets))
                 if search_api_tweets:
@@ -221,5 +223,6 @@ def tweets_by_searchterm_search(request):
                     start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id)
                 if streaming_tweets:
                     # user id param necessary because user or keys not serializable
-                    start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id)
+                    start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id,
+                                                             nr_of_days=nr_of_days)
                 return HttpResponseRedirect('/homescreen')

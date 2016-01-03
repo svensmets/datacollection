@@ -1,48 +1,48 @@
 /**
  * Created by svens on 30-10-2015.
  */
-$(document).ready(function(){
+$(document).ready(function () {
     $("#profile-information-row").css('display', 'none');
     $("#tweets-by-name-row").css('display', 'none');
     $("#tweets-by-searchterm-row").css('display', 'none');
 
-    $("#btn-search-profile-information").click(function(){
+    $("#btn-search-profile-information").click(function () {
         $("#profile-information-row").fadeIn();
         $("#tweets-by-name-row").fadeOut();
         $("#tweets-by-searchterm-row").fadeOut();
     });
-    $("#btn-search-tweets-names").click(function(){
+    $("#btn-search-tweets-names").click(function () {
         $("#profile-information-row").fadeOut();
         $("#tweets-by-name-row").fadeIn();
         $("#tweets-by-searchterm-row").fadeOut();
     });
-    $("#btn-search-tweets-searchterms").click(function(){
+    $("#btn-search-tweets-searchterms").click(function () {
         $("#profile-information-row").fadeOut();
         $("#tweets-by-name-row").fadeOut();
         $("#tweets-by-searchterm-row").fadeIn();
     });
 
     //if streaming options are checked, number of days must be set to required
-    $("#streaming-searchterms-checkbox").change(function(){
-        if($("#streaming-searchterms-checkbox").is(":checked")){
+    $("#streaming-searchterms-checkbox").change(function () {
+        if ($("#streaming-searchterms-checkbox").is(":checked")) {
             $("#nr-days-searchterms-streaming").prop("required", true);
-        }else{
+        } else {
             $("#nr-days-searchterms-streaming").prop("required", false);
         }
     });
-    $("#streaming-tweetsbyname-checkbox").change(function(){
-        if($("#streaming-tweetsbyname-checkbox").is(":checked")){
+    $("#streaming-tweetsbyname-checkbox").change(function () {
+        if ($("#streaming-tweetsbyname-checkbox").is(":checked")) {
             $("#nr-days-names-streaming").prop("required", true);
-        }else{
+        } else {
             $("#nr-days-names-streaming").prop("required", false);
         }
     });
     /*
-    * REFRESH TASKS
-    * */
+     * REFRESH TASKS
+     * */
     // refresh tasks: necessary because task does not yet exist when user performs a search and the screen returns
-    $("#refresh-tasks-button").click(function(){
-        $.post("/get_tasks/", function(data){
+    $("#refresh-tasks-button").click(function () {
+        $.post("/get_tasks/", function (data) {
             //clear tasks shown
             $("#tasks-row").empty();
             //gather data from response
@@ -52,34 +52,34 @@ $(document).ready(function(){
             var allTasks = String(tasks).split(";");
             //show tasks to user
             $("#tasks-row").append("<h2>Tasks of " + user + "</h2>");
-            for(var i = 0; i < allTasks.length; i++){
+            for (var i = 0; i < allTasks.length; i++) {
                 var task = allTasks[i];
                 //remove comma's at the beginning of tasks
-                if(task.charAt(0) === ','){
+                if (task.charAt(0) === ',') {
                     task = task.substr(1)
                 }
                 //add only if taks is not empty
-                if(task.length > 0){
+                if (task.length > 0) {
                     $("#tasks-row").append('<div class="well">' + task + '</div>');
                 }
             }
-        }).fail(function(){
+        }).fail(function () {
             alert("error")
         });
     });
     /*
-    * SEARCH PROFILE INFORMATION
-    * */
+     * SEARCH PROFILE INFORMATION
+     * */
     //add names
     //Check whether the name the user entered is a valid screenname
     //Adds name to textarea if valid
-    $("#add-name-button").click(function(){
-        if($("#add-name-input").val()){
+    $("#add-name-button").click(function () {
+        if ($("#add-name-input").val()) {
             var name = $("#add-name-input").val();
             /* check name, if exists as a twittername add it to the textarea*/
-            $.get("/lookupname/", {name:name}, function(data){
+            $.get("/lookupname/", {name: name}, function (data) {
                 var response = data['exists'];
-                if(response === 'true'){
+                if (response === 'true') {
                     /*add name to textarea*/
                     var allnames = $("#all-names-textarea").val();
                     $("#all-names-textarea").val(allnames + name + ",");
@@ -87,7 +87,7 @@ $(document).ready(function(){
                     $("#add-name-input").val("");
                     /*remove possible error message*/
                     $("#error_usernotvalid").text("");
-                }else{
+                } else {
                     $("#add-name-input").after("<span id='error_usernotvalid'>user not valid</span>");
                     /*clear textfield*/
                     $("#add-name-input").val("");
@@ -96,69 +96,71 @@ $(document).ready(function(){
         }
     });
     //submit profile information search task
-    $("#form-search-options").submit(function(event){
+    $("#form-search-options").submit(function (event) {
         //stop form from submitting normally
         event.preventDefault();
         //gather all information
         var names = $("#all-names-textarea").val();
-        if(names === ""){
+        if (names === "") {
             //if textarea is empty, error message is shown for 2 seconds
             $("#all-names-textarea").before('<p class="names-error-message" style="color:red;"><red>Name is required</p>');
-            setTimeout(function(){
+            setTimeout(function () {
                 $(".names-error-message").hide();
             }, 2000);
-        }else{
+        } else {
             //textarea has names, gather values of search options
             var followersChecked = false;
             var friendChecked = false;
             var listMembershipsChecked = false;
             var listSubscriptionsChecked = false;
             var relationshipsChecked = false;
-            var maxFollowers = $("#max-followers-input").val() ;
-            if(!maxFollowers){
+            var maxFollowers = $("#max-followers-input").val();
+            if (!maxFollowers) {
                 maxFollowers = 110000;
             }
-            if($("#followers-checkbox").is(":checked")){
+            if ($("#followers-checkbox").is(":checked")) {
                 followersChecked = true;
             }
-            if($("#friends-checkbox").is(":checked")){
+            if ($("#friends-checkbox").is(":checked")) {
                 friendChecked = true;
             }
-            if($("#list-memberships-checkbox").is(":checked")){
+            if ($("#list-memberships-checkbox").is(":checked")) {
                 listMembershipsChecked = true;
             }
-            if($("#list-subscriptions-checkbox").is(":checked")){
+            if ($("#list-subscriptions-checkbox").is(":checked")) {
                 listSubscriptionsChecked = true;
             }
-            if($("#relationships-checkbox").is(":checked")){
+            if ($("#relationships-checkbox").is(":checked")) {
                 relationshipsChecked = true;
             }
             //data must be put in array and then stringified => otherwise error on post
-            var data = {names: names, followers: followersChecked, friends: friendChecked,
+            var data = {
+                names: names, followers: followersChecked, friends: friendChecked,
                 listmemberships: listMembershipsChecked, listsubscriptions: listSubscriptionsChecked,
-                maxfollowers: maxFollowers, relationshipschecked: relationshipsChecked}
+                maxfollowers: maxFollowers, relationshipschecked: relationshipsChecked
+            }
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
-            $.post("/profile-information-search/", JSON.stringify(data)).fail(function(){
+            $.post("/profile-information-search/", JSON.stringify(data)).fail(function () {
                 alert("error");
             });
         }
     });
     //clear names of textarea search profile information
-    $("#btn-clear-profile-information-textarea").click(function(){
+    $("#btn-clear-profile-information-textarea").click(function () {
         $("#all-names-textarea").val("");
     });
     /*
-    * SEARCH TWEETS BY NAME
-    * */
+     * SEARCH TWEETS BY NAME
+     * */
     //Check whether the name the user entered is a valid screenname
     //Adds name to textarea if valid
-    $("#add-tweetname-button").click(function(){
-        if($("#add-tweetname-input").val()){
+    $("#add-tweetname-button").click(function () {
+        if ($("#add-tweetname-input").val()) {
             var name = $("#add-tweetname-input").val();
-            $.get("/lookupname/", {name:name}, function(data){
+            $.get("/lookupname/", {name: name}, function (data) {
                 var response = data['exists'];
-                if(response === 'true'){
+                if (response === 'true') {
                     /*add name to textarea*/
                     var allnames = $("#all-names-textarea-tweetsbyname").val();
                     $("#all-names-textarea-tweetsbyname").val(allnames + name + ",");
@@ -166,7 +168,7 @@ $(document).ready(function(){
                     $("#add-tweetname-input").val("");
                     /*remove possible error message*/
                     $("#error_usernotvalid").text("");
-                }else{
+                } else {
                     $("#add-tweetname-input").after("<span id='error_usernotvalid'>user not valid</span>");
                     /*clear textfield*/
                     $("#add-tweetname-input").val("");
@@ -175,45 +177,52 @@ $(document).ready(function(){
         }
     });
     //clear names of textarea tweets by name
-    $("#btn-clear-tweetsbyname-textarea").click(function(){
+    $("#btn-clear-tweetsbyname-textarea").click(function () {
         $("#all-names-textarea-tweetsbyname").val("");
     });
     //start streaming search by name
-    $("#form-tweets-by-name-search-options").submit(function(event){
+    $("#form-tweets-by-name-search-options").submit(function (event) {
         //stop form from submitting normally
         event.preventDefault();
         //gather all information
         var names = $("#all-names-textarea-tweetsbyname").val();
-        if(names === ""){
+        if (names === "") {
             //if textarea is empty, error message is shown for 2 seconds
             $("#all-names-textarea-tweetsbyname").before('<p class="names-error-message" style="color:red;"><red>Must not be empty</p>');
-            setTimeout(function(){
+            setTimeout(function () {
                 $(".names-error-message").hide();
             }, 2000);
-        }else{
+        } else {
             //textarea has names, gather values of search options
             var getSearchAPITweets = false;
             var getStreamingTweets = false;
-            if($("#searchapi-tweetsbyname-checkbox").is(":checked")){
+            var nrOfDays = 0;
+            if ($("#searchapi-tweetsbyname-checkbox").is(":checked")) {
                 getSearchAPITweets = true;
             }
-            if($("#streaming-tweetsbyname-checkbox").is(":checked")){
+            if ($("#streaming-tweetsbyname-checkbox").is(":checked")) {
                 getStreamingTweets = true;
+                nrOfDays = $("#nr-days-searchterms-streaming").val();
             }
             //data must be put in array and then stringified => otherwise error on post
-            var data = {names: names, getSearchApiTweets: getSearchAPITweets, getStreamingTweets : getStreamingTweets}
+            var data = {
+                names: names,
+                getSearchApiTweets: getSearchAPITweets,
+                getStreamingTweets: getStreamingTweets,
+                nrOfDays: nrOfDays
+            }
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
-            $.post("/tweets_by_name_search/", JSON.stringify(data)).fail(function(){
+            $.post("/tweets_by_name_search/", JSON.stringify(data)).fail(function () {
                 alert("error");
             });
         }
     });
     /*
-    * SEARCH TWEETS BY SEARCHTERM
-    * */
-    $("#add-searchterm-button").click(function(){
-        if($("#add-searchterm-input").val()){
+     * SEARCH TWEETS BY SEARCHTERM
+     * */
+    $("#add-searchterm-button").click(function () {
+        if ($("#add-searchterm-input").val()) {
             var searchTerm = $("#add-searchterm-input").val();
             var allSearchTerms = $("#all-names-textarea-searchterms").val();
             $("#all-names-textarea-searchterms").val(allSearchTerms + searchTerm + ",");
@@ -221,43 +230,49 @@ $(document).ready(function(){
         }
     });
     //clear names of textarea tweets by name
-    $("#btn-clear-searchterms-textarea").click(function(){
+    $("#btn-clear-searchterms-textarea").click(function () {
         $("#all-names-textarea-searchterms").val("");
     });
     //start search
-    $("#form-tweets-by-searchterm-options").submit(function(event){
+    $("#form-tweets-by-searchterm-options").submit(function (event) {
         //stop form from submitting normally
         event.preventDefault();
         //gather all information from the input fields
         var searchTerms = $("#all-names-textarea-searchterms").val();
-        if(searchTerms === ""){
+        if (searchTerms === "") {
             //if textarea is empty, error message is shown for 2 seconds
             $("#all-names-textarea-searchterms").before('<p class="names-error-message" style="color:red;"><red>Must not be empty</p>');
-            setTimeout(function(){
+            setTimeout(function () {
                 $(".names-error-message").hide();
             }, 2000);
-        }else{
+        } else {
             //textarea has names, gather values of search options
             var getSearchAPITweets = false;
             var getStreamingTweets = false;
-            if($("#searchapi-searchterms-checkbox").is(":checked")){
+            var nrOfDays = 0;
+            if ($("#searchapi-searchterms-checkbox").is(":checked")) {
                 getSearchAPITweets = true;
             }
-            if($("#streaming-searchterms-checkbox").is(":checked")) {
+            if ($("#streaming-searchterms-checkbox").is(":checked")) {
                 getStreamingTweets = true;
-                var nrOfDays = $("#nr-days-searchterms-streaming").val();
+                nrOfDays = $("#nr-days-searchterms-streaming").val();
             }
             //data must be put in array and then stringified => otherwise error on post
-            var data = {searchTerms: searchTerms, getSearchApiTweets: getSearchAPITweets, getStreamingTweets : getStreamingTweets};
+            var data = {
+                searchTerms: searchTerms,
+                getSearchApiTweets: getSearchAPITweets,
+                getStreamingTweets: getStreamingTweets,
+                nrOfDays: nrOfDays
+            };
             //post the from with ajax
-            $.post("/tweets_by_searchterm_search/", JSON.stringify(data)).fail(function(){
+            $.post("/tweets_by_searchterm_search/", JSON.stringify(data)).fail(function () {
                 alert("error");
             })
         }
     });
     /*
-    * Functions for security token
-    * */
+     * Functions for security token
+     * */
     //https://docs.djangoproject.com/en/1.6/ref/contrib/csrf/#ajax
     function getCookie(name) {
         var cookieValue = null;
@@ -274,10 +289,11 @@ $(document).ready(function(){
         }
         return cookieValue;
     }
+
     var csrftoken = getCookie('csrftoken');
 
     $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
+        beforeSend: function (xhr, settings) {
             if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
                 // Send the token to same-origin, relative URLs only.
                 // Send the token only if the method warrants CSRF protection
