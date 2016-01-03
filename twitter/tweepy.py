@@ -399,6 +399,13 @@ class TweetsStreamListener(tweepy.StreamListener):
         print("timeout")
         # return True
 
+    def on_disconnect(self, notice):
+        """
+        Stream will be programmatically disconnected after a given time period
+        :param notice:
+        """
+        return False
+
     def _save_tweet(self, status, task_id):
         print("Tweet received: " + str(status.id))
         text_of_tweet = ""
