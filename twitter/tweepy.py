@@ -3,6 +3,8 @@ import tweepy
 import pytz
 from twitter.models import TwitterUser, TwitterList, TwitterRelationship
 from twitter.models import Tweet
+import djqscsv
+import os
 
 
 class TwitterTweepy:
@@ -36,7 +38,7 @@ class TwitterTweepy:
         """
         auth = tweepy.OAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
         auth.set_access_token(self.keys.access_token, self.keys.access_token_secret)
-        return tweepy.API(auth, wait_on_rate_limit='true', wait_on_rate_limit_notify='true')
+        return tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
     def user_exists(self, screen_name):
         """
@@ -169,6 +171,7 @@ class TwitterTweepy:
                                                   list_full_name=twitter_list.full_name, task_id=task_id)
                         twitterlist.save()
                         twitterlist.user_subscription.add(ego_user)
+
         # list with all ids of the EGO-users, and friends and followers (to speed up lookup later)
         if relationships_checked:
             list_total_users_ids = set()
@@ -208,7 +211,7 @@ class TwitterTweepy:
                             relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
                                                            relation_used="followers")
                             relation.save()
-            print("Relationships done. End of search")
+        print("End of search")
 
     def get_tweets_searchterms_searchapi(self, query_params, task_id):
         """

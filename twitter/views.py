@@ -28,7 +28,7 @@ class HomescreenPage(TemplateView):
         if keys is False:
             return HttpResponseRedirect('/addkeys/')
         else:
-            tasks = SearchTask.objects.get_task_of_user_in_string_format(user)
+            tasks = SearchTask.objects.get_tasks_of_user_dict(user)
             add_names_form = NamesTextAreaForm
             all_names_form = NamesTextAreaForm
             search_options_form = SearchOptionsForm
@@ -39,7 +39,7 @@ class HomescreenPage(TemplateView):
     @method_decorator(login_required)
     def post(self, request):
         user = request.user
-        tasks = SearchTask.objects.get_task_of_user_in_string_format(user)
+        tasks = SearchTask.objects.get_tasks_of_user_dict(user)
         return render(request, "twitter/homescreen.html", {'tasks': tasks})
 
 
@@ -226,3 +226,20 @@ def tweets_by_searchterm_search(request):
                     start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id,
                                                              nr_of_days=nr_of_days)
                 return HttpResponseRedirect('/homescreen')
+
+
+def get_task_data(request):
+    """
+    http://www.azavea.com/blogs/labs/2014/03/exporting-django-querysets-to-csv/
+    https://github.com/johnsensible/django-sendfile
+    (access on 01/02/2016)
+    :param request:
+    :return:
+    """
+    if request.method == 'POST':
+        user = request.user
+        body_unicode = request.body.decode('utf-8')
+        body = json.loads(body_unicode)
+        names = body['names']
+
+

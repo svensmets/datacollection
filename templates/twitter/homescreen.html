@@ -168,13 +168,11 @@
                 {% if not tasks %}
                     No tasks
                 {% endif %}
-                {% for task in tasks %}
-                    <div class="well">{{ task }} </div>
+                {% for key,value in tasks.items %}
+                    <!-- the id of the surrounding well is the id of the taks, needed to download the data -->
+                    <div class="well" id={{ key }}><p>Name: {{ value.name }} date: {{ value.tstamp }}<a class="btn btn-info pull-right" href="#" role="button" >Download data</a></p></div>
                 {% endfor %}
             </div>
-        </div>
-        <div class="row">
-            <a id="refresh-tasks-button" role="button" class="btn btn-danger">refresh tasks</a>
         </div>
         <footer>
             <p>Sven Smets</p>

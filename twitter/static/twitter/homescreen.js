@@ -39,6 +39,7 @@ $(document).ready(function () {
     });
     /*
      * REFRESH TASKS
+     * !! not longer used 01/02/2016
      * */
     // refresh tasks: necessary because task does not yet exist when user performs a search and the screen returns
     $("#refresh-tasks-button").click(function () {
@@ -58,9 +59,9 @@ $(document).ready(function () {
                 if (task.charAt(0) === ',') {
                     task = task.substr(1)
                 }
-                //add only if taks is not empty
+                //add only if task is not empty
                 if (task.length > 0) {
-                    $("#tasks-row").append('<div class="well">' + task + '</div>');
+                    $("#tasks-row").append('<div class="well">' + task + '<a class="btn btn-info pull-right" href="#" role="button" id="btn-download-data">Download data</a></div>');
                 }
             }
         }).fail(function () {
@@ -270,6 +271,25 @@ $(document).ready(function () {
             })
         }
     });
+
+    /**
+     * When a user clicks on the button "download data" in the task section => download the data associated
+     * with the taks
+     */
+    $("#btn-download-data").click(function(){
+        //the id of the surrounding task is the id of the task
+        var taskId = $("#btn-download-data").parent().id;
+        //start the query and return the data, with compression
+        var data = {
+            id: taskId
+        }
+        //http://api.jquery.com/jquery.post/
+        //post the from with ajax
+        $.post("/get_task_data/", JSON.stringify(data)).fail(function () {
+            alert("error");
+        });
+    });
+
     /*
      * Functions for security token
      * */

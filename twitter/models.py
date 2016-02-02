@@ -6,7 +6,7 @@ from djcelery.models import TaskState
 # http://stackoverflow.com/questions/1372016/django-models-custom-functions
 class TaskManager(models.Manager):
     """
-    This class helps to get the tasks of a user
+    Helper class for different formats of the tasks of the user
     """
     def get_tasks_of_user(self, user):
         """
@@ -27,13 +27,13 @@ class TaskManager(models.Manager):
         """
         method returns all SearchTasks of the user in string format
         """
-        tasks = []
+        tasks = {}
         search_tasks = self.filter(user=user)
         for search_task in search_tasks:
             try:
                 full_task = TaskState.objects.get(task_id=search_task.task)
-                tasks.append("Name: " + full_task.name + " Status: " + full_task.state + " Date: " +
-                             full_task.tstamp.strftime("%Y-%m-%d %H:%M:%S"))
+                tasks[full_task.task_id] = ("Name: " + full_task.name + " Status: " + full_task.state + " Date: " +
+                                            full_task.tstamp.strftime("%Y-%m-%d %H:%M:%S"))
             except TaskState.DoesNotExist:
                 # exception needed: the last task does not yet exist when the user enters a search task
                 # and the homescreen is called with the redirect from profile_information_search
@@ -44,7 +44,7 @@ class TaskManager(models.Manager):
 
     def get_tasks_of_user_delimited(self, user):
         """
-        returns the taks of the user delimited with a ';'
+        returns the task of the user delimited with a ';'
         """
         tasks = []
         search_tasks = self.filter(user=user)
@@ -53,6 +53,24 @@ class TaskManager(models.Manager):
                 full_task = TaskState.objects.get(task_id=search_task.task)
                 tasks.append("Name: " + full_task.name + " Status: " + full_task.state + " Date: "
                              + full_task.tstamp.strftime("%Y-%m-%d %H:%M:%S") + ";")
+            except TaskState.DoesNotExist:
+                # exception needed: the last task does not yet exist when the user enters a search task
+                # and the homescreen is called with the redirect from profile_information_search
+                # solution: refresh with ajax call from template
+                # http://stackoverflow.com/questions/11539152/django-matching-query-does-not-exist-after-object-save-in-celery-task
+                pass
+        return tasks
+
+    def get_tasks_of_user_dict(self, user):
+        """
+        method returns all SearchTasks of the user in a dictionary
+        """
+        tasks = {}
+        search_tasks = self.filter(user=user)
+        for search_task in search_tasks:
+            try:
+                full_task = TaskState.objects.get(task_id=search_task.task)
+                tasks[full_task.task_id] = full_task;
             except TaskState.DoesNotExist:
                 # exception needed: the last task does not yet exist when the user enters a search task
                 # and the homescreen is called with the redirect from profile_information_search

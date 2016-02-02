@@ -12,6 +12,9 @@ from twitter.util import get_twitter_keys_with_user_id
 from threading import Timer
 from datetime import datetime, timedelta
 import time
+import os
+from twitter.models import TwitterUser
+import djqscsv
 
 
 @shared_task(bind=True)
@@ -30,8 +33,12 @@ def profile_information_search_task(self, names, user_id, **kwargs):
     print("Task id: {0}".format(task_id))
     keys = get_twitter_keys_with_user_id(user_id)
     my_tweepy = TwitterTweepy(keys)
-    # rdb.set_trace()
     my_tweepy.profile_information_search(names=names, task_id=task_id, **kwargs)
+    # store the data of the search
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    csv_dir = os.path.join(base_dir, 'csv_data')
+    # store profile information to csv file and
+    store_data("profile information", task_id)
 
 
 @shared_task(bind=True)
@@ -118,3 +125,36 @@ def schedule_stop_stream(stream, nr_of_days):
         print("ERROR in stream disconnect")
         pass
 
+
+def store_data(search_name, task_id):
+    """
+    write the data from a certain search task stored in the database to a csv file
+    :param search_name: the name of the search_task (different actions for different search tasks)
+    :param task_id: task_id to store the filenames to the database
+    """
+    if search_name == "profile information":
+        qs_twitter_users = TwitterUser.objects.filter(task_id=task_id)
+        file_to_write = create_csv_file("friends")
+        try:
+            djqscsv.write_csv(qs_twitter_users, file_to_write)
+        except Exception as e:
+            print("Problem with writing csvfile")
+        file_to_write.close()
+
+
+def create_csv_file(name):
+    """
+    create a csv file with a certain name and a timestamp with milliseconds
+    :param name:
+    :return:
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    csv_dir = os.path.join(base_dir, 'csv_data')
+    date = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+    csv_file_name = name + "_" + date.replace(" ", "_").replace(":","_").replace("-","_") + ".csv"
+    csv_path = os.path.join(csv_dir, csv_file_name)
+    try:
+        csv_file = open(csv_path, 'w+', encoding='utf-8')
+        return csv_file
+    except IOError:
+        print("Error writing to csv file")
