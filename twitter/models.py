@@ -155,3 +155,4 @@ class TwitterRelationship(models.Model):
     from_user_id = models.BigIntegerField()
     to_user_id = models.BigIntegerField()
     relation_used = models.CharField(max_length=100)
+    task_id = models.CharField(max_length=250)

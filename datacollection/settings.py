@@ -123,4 +123,4 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
 # always eager for debugging purposes REMOVE IN PRODUCTION
-CELERY_ALWAYS_EAGER = True
+# CELERY_ALWAYS_EAGER = True

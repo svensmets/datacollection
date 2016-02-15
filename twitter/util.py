@@ -46,3 +46,152 @@ def get_twitter_keys_with_user_id(user_id):
     except ObjectDoesNotExist:
         return False
 
+
+# code starting from here was copied from djqscsv.py
+# code had to be changed (slightly) to be able to use it for python 3
+# ex: unicode existed in python 2 but was changed to str in python 3
+
+import csv
+import datetime
+from djqscsv import CSVException
+from django.utils import six
+
+
+# Keyword arguments that will be used by this module
+# the rest will be passed along to the csv writer
+DJQSCSV_KWARGS = {'field_header_map': None,
+                  'field_serializer_map': None,
+                  'use_verbose_names': True,
+                  'field_order': None}
+
+
+def write_csv(queryset, file_obj, **kwargs):
+    """
+    The main worker function. Writes CSV data to a file object based on the
+    contents of the queryset.
+    """
+
+    # process keyword arguments to pull out the ones used by this function
+    field_header_map = kwargs.get('field_header_map', {})
+    field_serializer_map = kwargs.get('field_serializer_map', {})
+    use_verbose_names = kwargs.get('use_verbose_names', True)
+    field_order = kwargs.get('field_order', None)
+
+    csv_kwargs = {}
+
+    for key, val in six.iteritems(kwargs):
+        if key not in DJQSCSV_KWARGS:
+            csv_kwargs[key] = val
+
+    # add BOM to support CSVs in MS Excel (for Windows only)
+    file_obj.write(_safe_utf8_stringify(u'\ufeff'))
+
+    # the CSV must always be built from a values queryset
+    # in order to introspect the necessary fields.
+    # However, repeated calls to values can expose fields that were not
+    # present in the original qs. If using `values` as a way to
+    # scope field permissions, this is unacceptable. The solution
+    # is to make sure values is called *once*.
+
+    # perform an string check to avoid a non-existent class in certain
+    # versions
+    if type(queryset).__name__ == 'ValuesQuerySet':
+        values_qs = queryset
+    else:
+        # could be a non-values qs, or could be django 1.9+
+        iterable_class = getattr(queryset, '_iterable_class', object)
+        if iterable_class.__name__ == 'ValuesIterable':
+            values_qs = queryset
+        else:
+            values_qs = queryset.values()
+
+    try:
+        field_names = values_qs.query.values_select
+    except AttributeError:
+        try:
+            field_names = values_qs.field_names
+        except AttributeError:
+            # in django1.5, empty querysets trigger
+            # this exception, but not django 1.6
+            raise CSVException("Empty queryset provided to exporter.")
+
+    extra_columns = list(values_qs.query.extra_select)
+    if extra_columns:
+        field_names += extra_columns
+
+    try:
+        aggregate_columns = list(values_qs.query.annotation_select)
+    except AttributeError:
+        # this gets a deprecation warning in django 1.9 but is
+        # required in django<=1.7
+        aggregate_columns = list(values_qs.query.aggregate_select)
+
+    if aggregate_columns:
+        field_names += aggregate_columns
+
+    if field_order:
+        # go through the field_names and put the ones
+        # that appear in the ordering list first
+        field_names = ([field for field in field_order
+                        if field in field_names] +
+                       [field for field in field_names
+                        if field not in field_order])
+
+    writer = csv.DictWriter(file_obj, field_names, **csv_kwargs)
+
+    # verbose_name defaults to the raw field name, so in either case
+    # this will produce a complete mapping of field names to column names
+    name_map = dict((field, field) for field in field_names)
+    if use_verbose_names:
+        name_map.update(
+            dict((field.name, field.verbose_name)
+                 for field in queryset.model._meta.fields
+                 if field.name in field_names))
+
+    # merge the custom field headers into the verbose/raw defaults, if provided
+    merged_header_map = name_map.copy()
+    if extra_columns:
+        merged_header_map.update(dict((k, k) for k in extra_columns))
+    merged_header_map.update(field_header_map)
+
+    merged_header_map = dict((k, _safe_utf8_stringify(v))
+                             for (k, v) in merged_header_map.items())
+    writer.writerow(merged_header_map)
+
+    for record in values_qs:
+        record = _sanitize_unicode_record(field_serializer_map, record)
+        writer.writerow(record)
+
+
+########################################
+# utility functions
+########################################
+
+
+def _safe_utf8_stringify(value):
+    if isinstance(value, str):
+        return value
+    elif isinstance(value, str):
+        return value.encode('utf-8')
+    else:
+        return value
+
+
+def _sanitize_unicode_record(field_serializer_map, record):
+
+    def _serialize_value(value):
+        # provide default serializer for the case when
+        # non text values get sent without a serializer
+        if isinstance(value, datetime.datetime):
+            return value.isoformat()
+        else:
+            return value
+
+    obj = {}
+    for key, val in six.iteritems(record):
+        if val is not None:
+            serializer = field_serializer_map.get(key, _serialize_value)
+            newval = serializer(val)
+            obj[_safe_utf8_stringify(key)] = _safe_utf8_stringify(newval)
+
+    return obj
