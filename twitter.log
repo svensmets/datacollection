@@ -1,0 +1,17 @@
+[16/Feb/2016 20:51:15] DEBUG [twitter.views:92] look up name
+[16/Feb/2016 20:51:16] DEBUG [twitter.tweepy:51] hybermat, hybermat
+[16/Feb/2016 20:51:34] DEBUG [twitter.views:92] look up name
+[16/Feb/2016 20:51:35] DEBUG [twitter.tweepy:51] hybermat, hybermat
+[16/Feb/2016 20:51:40] DEBUG [twitter.views:183] Search api False
+[16/Feb/2016 20:51:40] DEBUG [twitter.views:188] Streaming True
+[16/Feb/2016 20:51:41] DEBUG [twitter.views:196] ids count= 1
+[16/Feb/2016 20:57:07] DEBUG [twitter.views:92] look up name
+[16/Feb/2016 20:57:08] DEBUG [twitter:51] hybermat, hybermat
+[16/Feb/2016 20:57:21] DEBUG [twitter.views:183] Search api False
+[16/Feb/2016 20:57:21] DEBUG [twitter.views:188] Streaming True
+[16/Feb/2016 20:57:22] DEBUG [twitter.views:196] ids count= 1
+[16/Feb/2016 20:57:22] DEBUG [twitter:78] start streaming search
+[16/Feb/2016 20:57:23] DEBUG [twitter:129] sleep for 60 seconds
+[16/Feb/2016 20:57:50] DEBUG [twitter:414] Tweet received: 699684143286894592
+[16/Feb/2016 20:57:50] DEBUG [twitter:431] {'text': 'arend', 'indices': [15, 21]}
+[16/Feb/2016 20:58:23] DEBUG [twitter:131] disconnecting stream
