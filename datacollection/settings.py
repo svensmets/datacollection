@@ -95,6 +95,52 @@ DATABASES = {
     }
 }
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format' : "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
+            'datefmt' : "%d/%b/%Y %H:%M:%S"
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+    },
+    'handlers': {
+        'django': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'django.log',
+            'formatter': 'verbose'
+        },
+        'twitter': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'twitter.log',
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['django'],
+            'propagate': True,
+            'level': 'DEBUG',
+        },
+        'twitter': {
+            'handlers': ['twitter'],
+            'propagate': True,
+            'level': 'DEBUG',
+        },
+        'celery': {
+            'handlers': ['twitter'],
+            'propagate': True,
+            'level': 'DEBUG',
+        },
+
+    },
+}
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/

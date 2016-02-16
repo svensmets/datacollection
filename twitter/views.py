@@ -14,6 +14,7 @@ from twitter.tasks import start_tweets_searchterms_searchapi
 from twitter.tasks import start_tweets_names_searchapi
 from twitter.util import get_twitter_keys
 from tweepy import TweepError
+import logging
 
 
 class HomescreenPage(TemplateView):
@@ -87,6 +88,8 @@ def lookupname(request):
     :return: true if valid username, false if not
     """
     if request.method == 'GET':
+        logger = logging.getLogger(__name__)
+        logger.debug("look up name")
         user = request.user
         keys = get_twitter_keys(user)
         if keys is False:
@@ -127,6 +130,8 @@ def profile_information_search(request):
         if request.method == 'POST':
             # http://stackoverflow.com/questions/29780060/trying-to-parse-request-body-from-post-in-django
             # json.loads() only accepts a unicode string, so it must be decoded before passing it to json.loads()
+            logger = logging.getLogger(__name__)
+            logger.debug("profile information search")
             user = request.user
             keys = get_twitter_keys(user)
             if keys is False:
@@ -163,6 +168,7 @@ def tweets_by_name_search(request):
     """
     if request.is_ajax():
         if request.method == 'POST':
+            logger = logging.getLogger(__name__)
             user = request.user
             keys = get_twitter_keys(user)
             if keys is False:
@@ -174,12 +180,12 @@ def tweets_by_name_search(request):
                 search_api_tweets = body['getSearchApiTweets']
                 streaming_tweets = body['getStreamingTweets']
                 nr_of_days = body['nrOfDays']
-                print("Search api " + str(search_api_tweets))
+                logger.debug("Search api " + str(search_api_tweets))
                 if search_api_tweets:
                     names_list = str.split(names, ',')
                     # user id param necessary because user or keys not serializable
                     start_tweets_names_searchapi.delay(names_list=names_list, user_id=user.id)
-                print("Streaming " + str(streaming_tweets))
+                logger.debug("Streaming " + str(streaming_tweets))
                 # transform names list in userIds
                 # the names must be in a list for the lookup_users method
                 if streaming_tweets:
@@ -187,7 +193,7 @@ def tweets_by_name_search(request):
                     tweepy = TwitterTweepy(keys=keys)
                     # first get the ids of the screenames
                     ids = tweepy.get_ids_from_screennames(names_list)
-                    print("ids count= " + str(len(ids)))
+                    logger.debug("ids count= " + str(len(ids)))
                     # note: to avoid error: changes to streaming.py in tweepy code was made
                     # https://github.com/tweepy/tweepy/issues/615
                     # user id param necessary because user or keys not serializable
@@ -205,6 +211,7 @@ def tweets_by_searchterm_search(request):
     """
     if request.is_ajax():
         if request.method == 'POST':
+            logger = logging.getLogger(__name__)
             user = request.user
             keys = get_twitter_keys(user)
             if keys is False:
@@ -217,7 +224,7 @@ def tweets_by_searchterm_search(request):
                 streaming_tweets = body['getStreamingTweets']
                 nr_of_days = body['nrOfDays']
                 searchterm_list = str.split(searchterms, ',')
-                print("Streaming " + str(streaming_tweets))
+                logger.debug("Streaming " + str(streaming_tweets))
                 if search_api_tweets:
                     # user id param necessary because user or keys not serializable
                     start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id)

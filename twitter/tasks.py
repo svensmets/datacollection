@@ -18,6 +18,7 @@ from twitter.util import write_csv
 import csv
 from django.db import connection
 from twitter.models import TwitterList
+import logging
 
 
 @shared_task(bind=True)
@@ -32,8 +33,9 @@ def profile_information_search_task(self, names, user_id, **kwargs):
     :param list_memberships:
     :param list_subscriptions:
     """
+    logger = logging.getLogger('twitter')
     task_id = self.request.id
-    print("Task id: {0}".format(task_id))
+    logger.debug("Task id: {0}".format(task_id))
     keys = get_twitter_keys_with_user_id(user_id)
     my_tweepy = TwitterTweepy(keys)
     my_tweepy.profile_information_search(names=names, task_id=task_id, **kwargs)
@@ -64,6 +66,7 @@ def start_tweets_by_name_streaming(self, user_ids, user_id, nr_of_days):
     With the streaming api
     :param names: list of userids to follow
     """
+    logger = logging.getLogger('twitter')
     task_id = self.request.id
     keys = get_twitter_keys_with_user_id(user_id)
     # use user-level authentication for streaming (otherwise 401 error)
@@ -72,7 +75,7 @@ def start_tweets_by_name_streaming(self, user_ids, user_id, nr_of_days):
     my_stream = tweepy.Stream(auth=my_tweepy.api.auth, listener=my_listener, task_id=task_id)
     t = Timer(1.0, schedule_stop_stream, kwargs={'stream': my_stream, 'nr_of_days': nr_of_days, 'task_id': task_id})
     t.start()
-    print("start streaming search")
+    logger.debug("start streaming search")
     my_stream.filter(follow=user_ids)
 
 
@@ -97,6 +100,7 @@ def start_tweets_searchterms_streaming(self, searchterms, user_id, nr_of_days):
     Get tweets based on searchterms via Streaming API
     :param searchterms: a list of searchterms to track
     """
+    logger = logging.getLogger('twitter')
     task_id = self.request.id
     keys = get_twitter_keys_with_user_id(user_id)
     # use user-level authentication for streaming (otherwise 401 error)
@@ -106,30 +110,30 @@ def start_tweets_searchterms_streaming(self, searchterms, user_id, nr_of_days):
     # start a thread with a timer to stop the streaming
     # time_to_run = float(60 * 60 * 24 * nr_of_days)
     # time_to_run = float(1 * 1 * 1 * nr_of_days)
-    # print("Streaming for {0} days (= {1} seconds".format(nr_of_days, time_to_run))
+    # logger.debug("Streaming for {0} days (= {1} seconds".format(nr_of_days, time_to_run))
     # start the scheduling of the stop event
     t = Timer(1.0, schedule_stop_stream, kwargs={'stream': my_stream, 'nr_of_days': nr_of_days, 'task_id':task_id})
     t.start()
-    print("start streaming search")
+    logger.debug("start streaming search")
     my_stream.filter(track=searchterms)
-    print("end of streaming")
+    logger.debug("end of streaming")
 
 
 def schedule_stop_stream(stream, nr_of_days, task_id):
     # http://code.activestate.com/recipes/577183-wait-to-tomorrow/
+    logger = logging.getLogger('twitter')
     current_date = datetime.now()
     date_to_stop = current_date + timedelta(days=int(nr_of_days))
     seconds = (date_to_stop - current_date).total_seconds()
-    seconds = 60
-    print("sleep for {0} seconds".format(str(seconds)))
+    logger.debug("sleep for {0} seconds".format(str(seconds)))
     time.sleep(seconds)
-    print("disconnecting stream")
+    logger.debug("disconnecting stream")
     #save the data of the stream
     store_data(search_name="tweets", task_id=task_id)
     try:
         stream.disconnect()
     except:
-        print("ERROR in stream disconnect")
+        logger.debug("ERROR in stream disconnect")
         pass
 
 
@@ -154,6 +158,7 @@ def create_csv_file(name):
     :param name:
     :return:
     """
+    logger = logging.getLogger('twitter')
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     csv_dir = os.path.join(base_dir, 'csv_data')
     date = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
@@ -165,7 +170,7 @@ def create_csv_file(name):
         csv_file = open(csv_path, 'w+', encoding='utf-8')
         return csv_file
     except IOError:
-        print("Error writing to csv file")
+        logger.debug("Error writing to csv file")
 
 
 def all_users_from_query(task_id):
