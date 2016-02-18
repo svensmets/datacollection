@@ -38,7 +38,7 @@ class TwitterTweepy:
         """
         auth = tweepy.OAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
         auth.set_access_token(self.keys.access_token, self.keys.access_token_secret)
-        return tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, retry_count=10, retry_delay=60, retry_errors=[401, 429, 500, 10054])
+        return tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
     def user_exists(self, screen_name):
         """
@@ -120,12 +120,22 @@ class TwitterTweepy:
                     self.logger.debug("Friend ids of {}".format(name))
                     ids = list()
                     # get user ids of friends of user
-                    for friend_id in tweepy.Cursor(self.api.friends_ids, screen_name=name).items():
-                        # add ids to list of ids
-                        ids.append(friend_id)
-                    # get user objects from friend-ids and store in database
-                    for page in self._paginate(ids, 100):
-                        self._save_users(page, task_id, list_total_users)
+                    while True:
+                        try:
+                            for friend_id in tweepy.Cursor(self.api.friends_ids, screen_name=name).items():
+                                # add ids to list of ids
+                                ids.append(friend_id)
+                            # get user objects from friend-ids and store in database
+                            # remove doubles
+                            id_set = set(ids)
+                            ids_no_doubles = list(id_set)
+                            for page in self._paginate(ids_no_doubles, 100):
+                                self._save_users(page, task_id, list_total_users)
+                        except tweepy.TweepError:
+                            # when api cannot connect, reset connection
+                            self.api = self.authenticate()
+                        self.logger.debug("End of collect friends")
+                        break
 
         # Collect followers of ego users
         if followers:
@@ -136,27 +146,41 @@ class TwitterTweepy:
                     self.logger.debug("Follower ids of {}".format(name))
                     ids = list()
                     # get user ids of followers of user
-                    for follower_id in tweepy.Cursor(self.api.followers_ids, screen_name=name).items():
-                        ids.append(follower_id)
-                    # get user objects from follower-ids and store in database
-                    for page in self._paginate(ids, 100):
-                        self._save_users(page, task_id, list_total_users)
-
-        # Collect lists the ego users are members of
+                    while True:
+                        try:
+                            for follower_id in tweepy.Cursor(self.api.followers_ids, screen_name=name).items():
+                                ids.append(follower_id)
+                            # get user objects from follower-ids and store in database
+                            # remove doubles
+                            id_set = set(ids)
+                            ids_no_doubles = list(id_set)
+                            for page in self._paginate(ids_no_doubles, 100):
+                                self._save_users(page, task_id, list_total_users)
+                        except tweepy.TweepError:
+                            # reset connection when api cannot connect
+                            self.api = self.authenticate()
+                        self.logger.debug("End of collect followers")
+                        break
         if list_memberships:
             self.logger.debug("Collect list memberships")
             for name in names_list:
                 if name:
                     # check first if list is not empty
                     ego_user = self._get_user(name, list_ego_users)
-                    self.logger.debug(name, list_ego_users)
-                    for twitter_list in tweepy.Cursor(self.api.lists_memberships, screen_name=name).items():
-                        # for a many to many relationship, the object has to be saved first,
-                        # then the relationship can be added
-                        twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
-                                                  list_full_name=twitter_list.full_name, task_id=task_id)
-                        twitterlist.save()
-                        twitterlist.user_membership.add(ego_user)
+                    while True:
+                        try:
+                            for twitter_list in tweepy.Cursor(self.api.lists_memberships, screen_name=name).items():
+                                # for a many to many relationship, the object has to be saved first,
+                                # then the relationship can be added
+                                twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
+                                                          list_full_name=twitter_list.full_name, task_id=task_id)
+                                twitterlist.save()
+                                twitterlist.user_membership.add(ego_user)
+                        except tweepy.TweepError:
+                            # reset connection when api cannot connect
+                            self.api = self.authenticate()
+                        self.logger.debug("End of collect list memberships")
+                        break
 
         # Collect lists the ego user subscribes to
         if list_subscriptions:
@@ -165,12 +189,18 @@ class TwitterTweepy:
                 if name:
                     # check first if list is not empty
                     ego_user = self._get_user(name, list_ego_users)
-                    self.logger.debug(name, list_ego_users)
-                    for twitter_list in tweepy.Cursor(self.api.lists_subscriptions, screen_name=name).items():
-                        twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
-                                                  list_full_name=twitter_list.full_name, task_id=task_id)
-                        twitterlist.save()
-                        twitterlist.user_subscription.add(ego_user)
+                    while True:
+                        try:
+                            for twitter_list in tweepy.Cursor(self.api.lists_subscriptions, screen_name=name).items():
+                                twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
+                                                          list_full_name=twitter_list.full_name, task_id=task_id)
+                                twitterlist.save()
+                                twitterlist.user_subscription.add(ego_user)
+                        except tweepy.TweepError:
+                            # reset connection when api cannot connect
+                            self.api = self.authenticate()
+                        self.logger.debug("End of collect list subscriptions")
+                        break
 
         # list with all ids of the EGO-users, and friends and followers (to speed up lookup later)
         if relationships_checked:
@@ -191,9 +221,20 @@ class TwitterTweepy:
                 for user in list_total_users:
                     list_ids = list()
                     # collect all friends ids of the user
-                    for user_id in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).items():
-                        list_ids.append(user_id)
-                    for user_id in list_ids:
+                    while True:
+                        try:
+                            for user_id in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).items():
+                                list_ids.append(user_id)
+                        except tweepy.TweepError:
+                            # reset connection
+                            self.logger.debug("Tweeperror: resetting connection")
+                            self.api = self.authenticate()
+                        self.logger.debug("end of relationships friends")
+                        break
+                    # remove duplicates
+                    set_ids = set(list_ids)
+                    list_no_duplicates = list(set_ids)
+                    for user_id in list_no_duplicates:
                         if user_id in list_total_users_ids and user_id != user.user_id:
                             relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
                                                            relation_used="friends", task_id=task_id)
@@ -204,9 +245,19 @@ class TwitterTweepy:
                 for user in list_total_users:
                     list_ids = list()
                     # collect all follower ids of the user
-                    for user_id in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).items():
-                        list_ids.append(user_id)
-                    for user_id in list_ids:
+                    while True:
+                        try:
+                            for user_id in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).items():
+                                list_ids.append(user_id)
+                        except tweepy.TweepError:
+                            # reset connection
+                            self.api = self.authenticate()
+                        self.logger.debug("end of relationships followers")
+                        break
+                    # remove duplicates
+                    set_ids = set(list_ids)
+                    list_no_duplicates = list(set_ids)
+                    for user_id in list_no_duplicates:
                         if user_id in list_total_users_ids and user_id != user.user_id:
                             relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
                                                            relation_used="followers", task_id=task_id)

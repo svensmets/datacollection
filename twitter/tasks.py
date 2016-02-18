@@ -164,13 +164,8 @@ def create_csv_file(name):
     date = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
     csv_file_name = name + "_" + date.replace(" ", "_").replace(":", "_").replace("-", "_") + ".csv"
     csv_path = os.path.join(csv_dir, csv_file_name)
-    try:
-        # encoding necessary to avoid error with write_csv
-        # w+ to create the file if it does not exist
-        csv_file = open(csv_path, 'w+', encoding='utf-8')
-        return csv_file
-    except IOError:
-        logger.debug("Error writing to csv file")
+    csv_file = open(csv_path, 'w+', encoding='utf-8')
+    return csv_file
 
 
 def all_users_from_query(task_id):
