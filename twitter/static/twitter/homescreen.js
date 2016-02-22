@@ -37,6 +37,10 @@ $(document).ready(function () {
             $("#nr-days-names-streaming").prop("required", false);
         }
     });
+    //hide alerts on startup
+    $("#alert-search-started").hide();
+    $("#alert-name-not-valid").hide();
+    $("#alert-search-problem").hide();
     /*
      * REFRESH TASKS
      * !! not longer used 01/02/2016
@@ -64,8 +68,6 @@ $(document).ready(function () {
                     $("#tasks-row").append('<div class="well">' + task + '<a class="btn btn-info pull-right" href="#" role="button" id="btn-download-data">Download data</a></div>');
                 }
             }
-        }).fail(function () {
-            alert("error")
         });
     });
     /*
@@ -86,10 +88,8 @@ $(document).ready(function () {
                     $("#all-names-textarea").val(allnames + name + ",");
                     /*clear textfield*/
                     $("#add-name-input").val("");
-                    /*remove possible error message*/
-                    $("#error_usernotvalid").text("");
                 } else {
-                    $("#add-name-input").after("<span id='error_usernotvalid'>user not valid</span>");
+                    $("#alert-name-not-valid").show().delay(3000).fadeOut();
                     /*clear textfield*/
                     $("#add-name-input").val("");
                 }
@@ -142,8 +142,10 @@ $(document).ready(function () {
             }
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
-            $.post("/profile-information-search/", JSON.stringify(data)).fail(function () {
-                alert("error");
+            $.post("/profile-information-search/", JSON.stringify(data), function(){
+                $("#alert-search-started").show().delay(3000).fadeOut();
+            }).fail(function () {
+                $("#alert-search-problem").show().delay(3000).fadeOut();
             });
         }
     });
@@ -167,10 +169,8 @@ $(document).ready(function () {
                     $("#all-names-textarea-tweetsbyname").val(allnames + name + ",");
                     /*clear textfield*/
                     $("#add-tweetname-input").val("");
-                    /*remove possible error message*/
-                    $("#error_usernotvalid").text("");
                 } else {
-                    $("#add-tweetname-input").after("<span id='error_usernotvalid'>user not valid</span>");
+                    $("#alert-name-not-valid").show().delay(3000).fadeOut();
                     /*clear textfield*/
                     $("#add-tweetname-input").val("");
                 }
@@ -214,8 +214,10 @@ $(document).ready(function () {
             }
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
-            $.post("/tweets_by_name_search/", JSON.stringify(data)).fail(function () {
-                alert("error");
+            $.post("/tweets_by_name_search/", JSON.stringify(data), function(){
+                $("#alert-search-started").show().delay(3000).fadeOut();
+            }).fail(function () {
+                $("#alert-search-problem").show().delay(3000).fadeOut();
             });
         }
     });
@@ -266,9 +268,11 @@ $(document).ready(function () {
                 nrOfDays: nrOfDays
             };
             //post the from with ajax
-            $.post("/tweets_by_searchterm_search/", JSON.stringify(data)).fail(function () {
-                alert("error");
-            })
+            $.post("/tweets_by_searchterm_search/", JSON.stringify(data), function(){
+                $("#alert-search-started").show().delay(3000).fadeOut();
+            }).fail(function () {
+                $("#alert-search-problem").show().delay(3000).fadeOut();
+            });
         }
     });
 

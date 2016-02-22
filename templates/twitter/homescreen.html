@@ -3,7 +3,7 @@
 {% load bootstrap3 %}
 {% load staticfiles %}
 {% block app_name %}
-    Homescreen
+    Twitter homescreen
 {% endblock %}
 {% block content %}
     <!-- Main jumbotron for a primary marketing message or call to action -->
@@ -21,6 +21,14 @@
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-profile-information">Search Profile Information &raquo;</a></p>
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-names">Search Tweets based on Names &raquo;</a></p>
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-searchterms">Search Tweets based on Search Terms &raquo;</a></p>
+            </div>
+        </div>
+        <div class="row" id="messages-row">
+            <!-- show error messages if any -->
+            <div class="col-md-4">
+                <div class="alert alert-success" role="alert" id="alert-search-started">Search started</div>
+                <div class="alert alert-danger" role="alert" id="alert-search-problem">Problem with search</div>
+                <div class="alert alert-danger" role="alert" id="alert-name-not-valid">Name not valid</div>
             </div>
         </div>
         <div class="row" id="profile-information-row">
@@ -175,7 +183,7 @@
             </div>
         </div>
         <footer>
-            <p>Sven Smets</p>
+            <p></p>
         </footer>
     </div>
 {% endblock %}

@@ -286,8 +286,14 @@ class TwitterTweepy:
         # lookup the tweets in chunks of 10 params
         for query_string in query_strings:
             self.logger.debug("Get tweets based on query string: {0}".format(query_string))
-            for status in tweepy.Cursor(self.api.search, q=query_string).items():
-                self._save_tweet(status=status, task_id=task_id)
+            while True:
+                try:
+                    for status in tweepy.Cursor(self.api.search, q=query_string).items():
+                        self._save_tweet(status=status, task_id=task_id)
+                except tweepy.TweepError:
+                    # reset connection
+                    self.api = self.authenticate()
+                break
             self.logger.debug("No more tweets for {0}".format(query_string))
         self.logger.debug("End of search")
 
@@ -309,8 +315,14 @@ class TwitterTweepy:
                                                         for param in params))
         for query_string in query_strings:
             self.logger.debug(query_string)
-            for status in tweepy.Cursor(self.api.search, q=query_string).items():
-                self._save_tweet(status=status, task_id=task_id)
+            while True:
+                try:
+                    for status in tweepy.Cursor(self.api.search, q=query_string).items():
+                        self._save_tweet(status=status, task_id=task_id)
+                except tweepy.TweepError:
+                    # reset connection
+                    self.api = self.authenticate()
+                break
             self.logger.debug("No more tweets for {0}".format(query_string))
         self.logger.debug("End of search")
 

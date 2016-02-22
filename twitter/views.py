@@ -63,13 +63,15 @@ class AddTwitterKeys(View):
             consumer_secret = form.cleaned_data['consumer_secret']
             access_token = form.cleaned_data['access_token']
             access_token_secret = form.cleaned_data['access_token_secret']
+            keys_to_insert = {consumer_key: consumer_key, consumer_secret: consumer_secret, access_token: access_token,
+                              access_token_secret: access_token_secret}
             keys = TwitterKeys(consumer_key=consumer_key, consumer_secret=consumer_secret, access_token=access_token,
                                access_token_secret=access_token_secret, user=user)
             try:
                 # test validity keys
-                tweepy = TwitterTweepy(keys)
-                # save if keys valid
-                keys.save()
+                TwitterTweepy(keys)
+                # save if keys valid, or update if already keys in database
+                keys.objects.update_or_create(user=user, defaults=keys_to_insert)
                 return render(request, 'twitter/homescreen.html')
             except TweepError:
                 return render(request, 'twitter/addkeys.html',
