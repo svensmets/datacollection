@@ -71,7 +71,16 @@ class AddTwitterKeys(View):
                 # test validity keys
                 TwitterTweepy(keys)
                 # save if keys valid, or update if already keys in database
-                keys.objects.update_or_create(user=user, defaults=keys_to_insert)
+                try:
+                    db_keys = TwitterKeys.objects.get(user_id=user.id)
+                    db_keys.consumer_key = consumer_key
+                    db_keys.consumer_secret = consumer_secret
+                    db_keys.access_token = access_token
+                    db_keys.access_token_secret = access_token_secret
+                    db_keys.save()
+                except TwitterKeys.DoesNotExist:
+                    keys.save()
+                TwitterKeys.objects.update_or_create(user=user, defaults=keys_to_insert)
                 return render(request, 'twitter/homescreen.html')
             except TweepError:
                 return render(request, 'twitter/addkeys.html',
