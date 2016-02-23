@@ -21,6 +21,17 @@ $(document).ready(function () {
         $("#tweets-by-name-row").fadeOut();
         $("#tweets-by-searchterm-row").fadeIn();
     });
+    //profile information search: if relationship checkbox is checked: friends and followers must be checked
+    $("#relationships-checkbox").click(function(){
+        if($("#relationships-checkbox").is(":checked")){
+            $("#friends-checkbox").prop("checked", true).prop("disabled", true);
+            $("#followers-checkbox").prop("checked", true).prop("disabled", true);
+        }
+        if(!$("#relationships-checkbox").is(":checked")){
+            $("#friends-checkbox").prop("checked", false).prop("disabled", false);
+            $("#followers-checkbox").prop("checked", false).prop("disabled", false);
+        }
+    });
 
     //if streaming options are checked, number of days must be set to required
     $("#streaming-searchterms-checkbox").change(function () {

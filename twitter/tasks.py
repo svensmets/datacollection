@@ -12,21 +12,20 @@ from threading import Timer
 from datetime import datetime, timedelta
 import time
 import os
-from twitter.models import TwitterUser
-from twitter.models import TwitterRelationship
-from twitter.util import write_csv
 import csv
 from django.db import connection
-from twitter.models import TwitterList
 import logging
+from django.core.mail import send_mail
 
 
 @shared_task(bind=True)
-def profile_information_search_task(self, names, user_id, **kwargs):
+def profile_information_search_task(self, names, user_id, email, **kwargs):
     """
     Start the profile information search in background, based on search params entered in homescreen
     Search started in view profile_information_search
     :param names:
+    :param user_id:
+    :param email:
     :param friends:
     :param followers:
     :param max_followers:
@@ -40,11 +39,11 @@ def profile_information_search_task(self, names, user_id, **kwargs):
     my_tweepy = TwitterTweepy(keys)
     my_tweepy.profile_information_search(names=names, task_id=task_id, **kwargs)
     # store profile information to csv file and
-    store_data(search_name="profile information", task_id=task_id)
+    store_data(search_name="profile information", task_id=task_id, email=email)
 
 
 @shared_task(bind=True)
-def start_tweets_names_searchapi(self, names_list, user_id):
+def start_tweets_names_searchapi(self, names_list, user_id, email):
     """
     Get tweets based on names via Search API
     Tweets of 7 days in the past will be collected
@@ -54,11 +53,11 @@ def start_tweets_names_searchapi(self, names_list, user_id):
     keys = get_twitter_keys_with_user_id(user_id)
     my_tweepy = TwitterTweepy(keys)
     my_tweepy.get_tweets_names_searchapi(query_params=names_list, task_id=task_id)
-    store_data(search_name="tweets", task_id=task_id)
+    store_data(search_name="tweets", task_id=task_id, email=email)
 
 
 @shared_task(bind=True)
-def start_tweets_by_name_streaming(self, user_ids, user_id, nr_of_days):
+def start_tweets_by_name_streaming(self, user_ids, user_id, nr_of_days, email):
     """
     http://docs.tweepy.org/en/latest/streaming_how_to.html (18-12-2015)
     Get tweets based on the names in the names-list
@@ -73,15 +72,15 @@ def start_tweets_by_name_streaming(self, user_ids, user_id, nr_of_days):
     my_tweepy = TwitterTweepy(keys=keys, authentication='user_level')
     my_listener = TweetsStreamListener(my_tweepy.api, task_id=task_id)
     my_stream = tweepy.Stream(auth=my_tweepy.api.auth, listener=my_listener, task_id=task_id)
-    t = Timer(1.0, schedule_stop_stream, kwargs={'stream': my_stream, 'nr_of_days': nr_of_days, 'task_id': task_id})
+    t = Timer(1.0, schedule_stop_stream, kwargs={'stream': my_stream, 'nr_of_days': nr_of_days, 'task_id': task_id,
+                                                 'email': email})
     t.start()
     logger.debug("start streaming search")
     my_stream.filter(follow=user_ids)
 
 
-
 @shared_task(bind=True)
-def start_tweets_searchterms_searchapi(self, searchterms, user_id):
+def start_tweets_searchterms_searchapi(self, searchterms, user_id, email):
     """
     Get tweets based on search terms via Search API
     Tweets of 7 days in the past will be collected
@@ -91,14 +90,17 @@ def start_tweets_searchterms_searchapi(self, searchterms, user_id):
     keys = get_twitter_keys_with_user_id(user_id)
     my_tweepy = TwitterTweepy(keys)
     my_tweepy.get_tweets_searchterms_searchapi(query_params=searchterms, task_id=task_id)
-    store_data(search_name="tweets", task_id=task_id)
+    store_data(search_name="tweets", task_id=task_id, email=email)
 
 
 @shared_task(bind=True)
-def start_tweets_searchterms_streaming(self, searchterms, user_id, nr_of_days):
+def start_tweets_searchterms_streaming(self, searchterms, user_id, nr_of_days, email):
     """
     Get tweets based on searchterms via Streaming API
     :param searchterms: a list of searchterms to track
+    :param user_id: id of user, needed to find keys
+    :param nr_of_days: the number of days to run the search
+    :param email: email address of the user, to send mail when csv file is ready
     """
     logger = logging.getLogger('twitter')
     task_id = self.request.id
@@ -112,14 +114,23 @@ def start_tweets_searchterms_streaming(self, searchterms, user_id, nr_of_days):
     # time_to_run = float(1 * 1 * 1 * nr_of_days)
     # logger.debug("Streaming for {0} days (= {1} seconds".format(nr_of_days, time_to_run))
     # start the scheduling of the stop event
-    t = Timer(1.0, schedule_stop_stream, kwargs={'stream': my_stream, 'nr_of_days': nr_of_days, 'task_id':task_id})
+    t = Timer(1.0, schedule_stop_stream, kwargs={'stream': my_stream, 'nr_of_days': nr_of_days, 'task_id' :task_id,
+                                                 'email': email})
     t.start()
     logger.debug("start streaming search")
     my_stream.filter(track=searchterms)
     logger.debug("end of streaming")
 
 
-def schedule_stop_stream(stream, nr_of_days, task_id):
+def schedule_stop_stream(stream, nr_of_days, task_id, email):
+    """
+    Stops the stream search after the given number of days
+    :param stream:
+    :param nr_of_days:
+    :param task_id:
+    :param email:
+    :return:
+    """
     # http://code.activestate.com/recipes/577183-wait-to-tomorrow/
     logger = logging.getLogger('twitter')
     current_date = datetime.now()
@@ -128,8 +139,8 @@ def schedule_stop_stream(stream, nr_of_days, task_id):
     logger.debug("sleep for {0} seconds".format(str(seconds)))
     time.sleep(seconds)
     logger.debug("disconnecting stream")
-    #save the data of the stream
-    store_data(search_name="tweets", task_id=task_id)
+    # save the data of the stream
+    store_data(search_name="tweets", task_id=task_id, email=email)
     try:
         stream.disconnect()
     except:
@@ -137,7 +148,7 @@ def schedule_stop_stream(stream, nr_of_days, task_id):
         pass
 
 
-def store_data(search_name, task_id):
+def store_data(search_name, task_id, email):
     """
     write the data from a certain search task stored in the database to a csv file
     :param search_name: the name of the search_task (different actions for different search tasks)
@@ -148,8 +159,22 @@ def store_data(search_name, task_id):
         all_relations_from_query(task_id)
         all_list_memberships_from_query(task_id)
         all_list_subscriptions_from_query(task_id)
+        # send mail when task is finished if email address is provided
+        if email:
+            try:
+                send_mail('data ready', 'Twitter datacollection search is finished', 'datacoll3ction@gmail.com', [email],
+                          fail_silently=False)
+            except:
+                pass
     elif search_name == "tweets":
         all_tweets_from_query(task_id)
+        # send mail when task is finished if email address is provided
+        if email:
+            try:
+                send_mail('data ready', 'Twitter datacollection search is finished', 'datacoll3ction@gmail.com', [email],
+                          fail_silently=False)
+            except:
+                pass
 
 
 def create_csv_file(name):
@@ -205,6 +230,7 @@ def all_list_subscriptions_from_query(task_id):
             "INNER JOIN twitter_twitteruser user ON sub.twitteruser_id = user.user_id " \
             "WHERE list.task_id LIKE '{}'".format(task_id)
     write_cursor_to_csv(query, csv_file)
+
 
 def all_tweets_from_query(task_id):
     csv_file = create_csv_file("tweets_search_api")

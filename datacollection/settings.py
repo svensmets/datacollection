@@ -168,5 +168,12 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
-# always eager for debugging purposes REMOVE IN PRODUCTION
-# CELERY_ALWAYS_EAGER = True
+# always eager for debugging purposes REMOVE IN PRODUCTION => code runs in one thread
+CELERY_ALWAYS_EAGER = True
+
+#send email
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'datacoll3ction@gmail.com'
+EMAIL_HOST_PASSWORD = 'nJuhUpoiuK'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True

@@ -161,6 +161,7 @@ class TwitterTweepy:
                             self.api = self.authenticate()
                         self.logger.debug("End of collect followers")
                         break
+
         if list_memberships:
             self.logger.debug("Collect list memberships")
             for name in names_list:

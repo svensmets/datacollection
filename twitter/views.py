@@ -1,3 +1,4 @@
+import email
 from django.contrib.auth.decorators import login_required
 import json
 from django.http import HttpResponse, HttpResponseRedirect
@@ -157,12 +158,13 @@ def profile_information_search(request):
                 list_memberships = body['listmemberships']
                 list_subscriptions = body['listsubscriptions']
                 relationships_checked = body['relationshipschecked']
+                email_addr = user.email
                 # start search task
                 params = {'friends': friends, 'followers': followers, 'max_followers': max_followers,
                           'list_memberships': list_memberships, 'list_subscriptions': list_subscriptions,
                           'relationships_checked': relationships_checked}
                 # user id param necessary because user or keys not serializable
-                status = profile_information_search_task.delay(names=names, user_id=user.id, **params)
+                status = profile_information_search_task.delay(names=names, user_id=user.id, email=email_addr, **params)
                 # bind task to user and store in db
                 search_task = SearchTask(user=request.user, task=status.task_id)
                 search_task.save()
@@ -192,10 +194,11 @@ def tweets_by_name_search(request):
                 streaming_tweets = body['getStreamingTweets']
                 nr_of_days = body['nrOfDays']
                 logger.debug("Search api " + str(search_api_tweets))
+                email_addr = user.email
                 if search_api_tweets:
                     names_list = str.split(names, ',')
                     # user id param necessary because user or keys not serializable
-                    start_tweets_names_searchapi.delay(names_list=names_list, user_id=user.id)
+                    start_tweets_names_searchapi.delay(names_list=names_list, user_id=user.id, email=email_addr)
                 logger.debug("Streaming " + str(streaming_tweets))
                 # transform names list in userIds
                 # the names must be in a list for the lookup_users method
@@ -208,7 +211,8 @@ def tweets_by_name_search(request):
                     # note: to avoid error: changes to streaming.py in tweepy code was made
                     # https://github.com/tweepy/tweepy/issues/615
                     # user id param necessary because user or keys not serializable
-                    start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id, nr_of_days=nr_of_days)
+                    start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id, nr_of_days=nr_of_days,
+                                                         email=email_addr)
                 return HttpResponseRedirect('/homescreen')
 
 
@@ -234,15 +238,16 @@ def tweets_by_searchterm_search(request):
                 search_api_tweets = body['getSearchApiTweets']
                 streaming_tweets = body['getStreamingTweets']
                 nr_of_days = body['nrOfDays']
+                email_addr = user.email
                 searchterm_list = str.split(searchterms, ',')
                 logger.debug("Streaming " + str(streaming_tweets))
                 if search_api_tweets:
                     # user id param necessary because user or keys not serializable
-                    start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id)
+                    start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id, email=email_addr)
                 if streaming_tweets:
                     # user id param necessary because user or keys not serializable
                     start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id,
-                                                             nr_of_days=nr_of_days)
+                                                             nr_of_days=nr_of_days, email=email_addr)
                 return HttpResponseRedirect('/homescreen')
 
 
