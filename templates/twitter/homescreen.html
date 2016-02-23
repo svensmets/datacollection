@@ -57,7 +57,7 @@
                 <div class="col-md-4" id="profile-information-options-col">
                     <div class="form-group">
                         <label for="max-followers-input" class="form">Max followers: </label>
-                        <input type="number" id="max-followers-input" max="10000000" class="form-control">
+                        <input type="number" id="max-followers-input" min="1" max="10000000" class="form-control">
                     </div>
                     <div class="form-group">
                         <label for="friends-checkbox">Collect friends: </label>
@@ -119,7 +119,7 @@
                     </div>
                     <div class="form-group">
                         <label for="nr-days-names-streaming">Stream running for nr of days: </label>
-                        <input type="number" id="nr-days-names-streaming" value="1" max="7" class="form-control"/>
+                        <input type="number" id="nr-days-names-streaming" value="1" min="1" max="7" class="form-control"/>
                     </div>
                     <div class="form-group">
                         <input type="submit" id="bt-tweetsbyname-start" value="Start search">
@@ -161,7 +161,7 @@
                     </div>
                     <div class="form-group">
                         <label for="nr-days-searchterms-streaming">Stream running for nr of days: </label>
-                        <input type="number" id="nr-days-searchterms-streaming" value="1" max="7" class="form-control"/>
+                        <input type="number" id="nr-days-searchterms-streaming" value="1" min="1" max="7" class="form-control"/>
                     </div>
                     <div class="form-group">
                         <input type="submit" id="bt-searchterms-start" value="Start search">

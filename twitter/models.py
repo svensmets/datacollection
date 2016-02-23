@@ -98,6 +98,14 @@ class TwitterUser(models.Model):
     user_id = models.BigIntegerField(primary_key=True)
     name = models.CharField(max_length=100)
     screen_name = models.CharField(max_length=100)
+    user_description = models.CharField(max_length=250, null=True)
+    date_created = models.CharField(max_length=100)
+    url = models.CharField(max_length=250, null=True)
+    profile_image_url = models.CharField(max_length=250, null=True)
+    language = models.CharField(max_length=100)
+    location = models.CharField(max_length=250, null=True)
+    default_profile_image = models.NullBooleanField()
+    verified = models.NullBooleanField()
     friends_count = models.BigIntegerField()
     followers_count = models.BigIntegerField()
     # protected accounts cannot be accessed
@@ -135,6 +143,13 @@ class Tweet(models.Model):
     hashtags = models.CharField(max_length=200, blank=True)
     hyperlinks = models.CharField(max_length=200, blank=True)
     task_id = models.CharField(max_length=250)
+    favorite_count = models.IntegerField(null=True)
+    id_str = models.CharField(max_length=100, null=True)
+    in_reply_to_screen_name = models.CharField(max_length=250, null=True)
+    retweet_count = models.IntegerField(null=True)
+    source = models.CharField(max_length=250, null=True)
+    coordinates = models.CharField(max_length=100, null=True)
+    quoted_status_id = models.CharField(max_length=100, null=True)
 
 
 class TwitterKeys(models.Model):

@@ -158,13 +158,12 @@ def profile_information_search(request):
                 list_memberships = body['listmemberships']
                 list_subscriptions = body['listsubscriptions']
                 relationships_checked = body['relationshipschecked']
-                email_addr = user.email
                 # start search task
                 params = {'friends': friends, 'followers': followers, 'max_followers': max_followers,
                           'list_memberships': list_memberships, 'list_subscriptions': list_subscriptions,
                           'relationships_checked': relationships_checked}
                 # user id param necessary because user or keys not serializable
-                status = profile_information_search_task.delay(names=names, user_id=user.id, email=email_addr, **params)
+                status = profile_information_search_task.delay(names=names, user_id=user.id, email=user.email, **params)
                 # bind task to user and store in db
                 search_task = SearchTask(user=request.user, task=status.task_id)
                 search_task.save()

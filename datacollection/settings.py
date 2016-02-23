@@ -169,7 +169,7 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
 # always eager for debugging purposes REMOVE IN PRODUCTION => code runs in one thread
-CELERY_ALWAYS_EAGER = True
+# CELERY_ALWAYS_EAGER = True
 
 #send email
 EMAIL_HOST = 'smtp.gmail.com'

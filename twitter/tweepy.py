@@ -25,17 +25,6 @@ class TwitterTweepy:
         """
         # http://www.karambelkar.info/2015/01/how-to-use-twitters-search-rest-api-most-effectively./
         # using appauthhandler instead of oauthhandler, should give higher limits as stated in above link
-        """
-        if self.authentication == 'app_level':
-            # use app level authentication default
-            auth = tweepy.AppAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
-        elif self.authentication == 'user_level':
-            # use user level authentication for streaming
-            auth = tweepy.OAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
-            auth.set_access_token(self.keys.access_token, self.keys.access_token_secret)
-        # Twitter API wrapper, with options to automatically wait for the rate limit
-        return tweepy.API(auth, wait_on_rate_limit='true', wait_on_rate_limit_notify='true')
-        """
         auth = tweepy.OAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
         auth.set_access_token(self.keys.access_token, self.keys.access_token_secret)
         return tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
@@ -94,7 +83,11 @@ class TwitterTweepy:
                     user = self.api.get_user(name)
                     twitter_user = TwitterUser(user_id=user.id, name=user.name, screen_name=user.screen_name,
                                                friends_count=user.friends_count, followers_count=user.followers_count,
-                                               task_id=task_id, is_protected=user.protected)
+                                               task_id=task_id, is_protected=user.protected,
+                                               user_description=user.description, date_created=user.created_at,
+                                               url=user.url, profile_image_url=user.profile_image_url, language=user.lang,
+                                               location=user.location, default_profile_image=user.default_profile_image,
+                                               verified=user.verified)
                     if user.followers_count > max_followers:
                         # exclude EGO-user if too many followers
                         self.logger.debug("{} has too many followers".format(name))
@@ -110,6 +103,7 @@ class TwitterTweepy:
                     twitter_user.save()
                 except tweepy.TweepError:
                     self.logger.debug("Error in profile_information_search: error get username EGO-user")
+
         # Collect friends of ego-users
         if friends:
             self.logger.debug("Collect friends")
@@ -355,9 +349,12 @@ class TwitterTweepy:
         users = self.api.lookup_users(user_ids=ids)
         for user in users:
             twitter_user = TwitterUser(user_id=user.id, name=user.name, screen_name=user.screen_name,
-                                       friends_count=user.friends_count,
-                                       followers_count=user.followers_count, task_id=task_id)
-
+                                       friends_count=user.friends_count, followers_count=user.followers_count,
+                                       task_id=task_id, is_protected=user.protected,
+                                       user_description=user.description, date_created=user.created_at,
+                                       url=user.url, profile_image_url=user.profile_image_url, language=user.lang,
+                                       location=user.location, default_profile_image=user.default_profile_image,
+                                       verified=user.verified)
             twitter_user.save()
             user_list.append(twitter_user)
 
@@ -407,6 +404,7 @@ class TwitterTweepy:
         mentions = ""
         delimiter = ";"
         is_retweet = False
+        status_id = 0
         # check is the tweet is a retweet
         # if it is, add is_retweet = True and get the text from the original tweet (normal text is truncated)
         if hasattr(status, 'retweeted_status'):
@@ -428,11 +426,17 @@ class TwitterTweepy:
 
         # avoid a Runtimewarning: convert naive to non naive datetime
         # TODO: still error maybe?
+        # quoted_status_id only exists if tweet is a quoted tweet
+        if hasattr(status, 'quoted_status_id'):
+            status_id = status.quoted_status_id
         date_tweet = pytz.utc.localize(status.created_at)
         tweet = Tweet(tweet_id=status.id_str,
                       tweeter_id=status.user.id, tweeter_name=status.user.screen_name, tweet_text=text_of_tweet,
                       tweet_date=date_tweet, is_retweet=is_retweet,
-                      mentions=mentions, hashtags=hashtags, hyperlinks=urls, task_id=task_id)
+                      mentions=mentions, hashtags=hashtags, hyperlinks=urls, task_id=task_id,
+                      coordinates=status.coordinates, favorite_count=status.favorite_count, id_str=status.id_str,
+                      in_reply_to_screen_name=status.in_reply_to_screen_name, retweet_count=status.retweet_count,
+                      source=status.source, quoted_status_id=status_id)
         tweet.save()
 
 
@@ -482,6 +486,7 @@ class TweetsStreamListener(tweepy.StreamListener):
         mentions = ""
         delimiter = ";"
         is_retweet = False
+        status_id = 0
         # check is the tweet is a retweet
         # if it is, add is_retweet = True and get the text from the original tweet (normal text is truncated)
         if hasattr(status, 'retweeted_status'):
@@ -503,8 +508,13 @@ class TweetsStreamListener(tweepy.StreamListener):
 
         # avoid a Runtimewarning: convert naive to non naive datetime
         date_tweet = pytz.utc.localize(status.created_at)
+        if hasattr(status, 'quoted_status_id'):
+            status_id = status.quoted_status_id
         tweet = Tweet(tweet_id=status.id_str,
                       tweeter_id=status.user.id, tweeter_name=status.user.screen_name, tweet_text=text_of_tweet,
                       tweet_date=date_tweet, is_retweet=is_retweet,
-                      mentions=mentions, hashtags=hashtags, hyperlinks=urls, task_id=task_id)
+                      mentions=mentions, hashtags=hashtags, hyperlinks=urls, task_id=task_id,
+                      coordinates=status.coordinates, favorite_count=status.favorite_count, id_str=status.id_str,
+                      in_reply_to_screen_name=status.in_reply_to_screen_name, retweet_count=status.retweet_count,
+                      source=status.source, quoted_status_id=status_id)
         tweet.save()

@@ -196,7 +196,8 @@ def create_csv_file(name):
 def all_users_from_query(task_id):
     csv_file = create_csv_file("users")
     query = "SELECT u.user_id, u.name, u.screen_name, u.friends_count, u.followers_count, u.is_protected, " \
-            "u.max_followers_exceeded FROM twitter_twitteruser u " \
+            "u.max_followers_exceeded, u.date_created, u.default_profile_image, u.language, u.location, " \
+            "u.profile_image_url, u.user_description, u.verified, u.url FROM twitter_twitteruser u " \
             "WHERE u.task_id LIKE '{}'".format(task_id)
     write_cursor_to_csv(query, csv_file)
 
@@ -234,8 +235,9 @@ def all_list_subscriptions_from_query(task_id):
 
 def all_tweets_from_query(task_id):
     csv_file = create_csv_file("tweets_search_api")
-    query = "SELECT t.tweet_id, t.tweeter_id, t.tweeter_name, t.tweet_text, t.tweet_date, t.is_retweet, " \
-            "t.mentions, t.hashtags, t.hyperlinks FROM twitter_tweet t " \
+    query = "SELECT t.tweet_id, t.tweeter_id, t.tweeter_name, t.tweet_text, t.tweet_date, t.is_retweet, t.mentions, " \
+            "t.hashtags, t.hyperlinks, t.coordinates, t.favorite_count, t.id_str, t.in_reply_to_screen_name, " \
+            "t.quoted_status_id, t.retweet_count, t.source FROM twitter_tweet t " \
             "WHERE t.task_id LIKE '{}'".format(task_id)
     write_cursor_to_csv(query, csv_file)
 
