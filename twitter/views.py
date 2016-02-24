@@ -30,7 +30,7 @@ class HomescreenPage(TemplateView):
         if keys is False:
             return HttpResponseRedirect('/addkeys/')
         else:
-            tasks = SearchTask.objects.get_tasks_of_user_dict(user)
+            tasks = SearchTask.objects.get_tasks_of_user(user=user)
             add_names_form = NamesTextAreaForm
             all_names_form = NamesTextAreaForm
             search_options_form = SearchOptionsForm
@@ -41,7 +41,7 @@ class HomescreenPage(TemplateView):
     @method_decorator(login_required)
     def post(self, request):
         user = request.user
-        tasks = SearchTask.objects.get_tasks_of_user_dict(user)
+        tasks = SearchTask.objects.get_tasks_of_user(user=user)
         return render(request, "twitter/homescreen.html", {'tasks': tasks})
 
 
@@ -197,7 +197,10 @@ def tweets_by_name_search(request):
                 if search_api_tweets:
                     names_list = str.split(names, ',')
                     # user id param necessary because user or keys not serializable
-                    start_tweets_names_searchapi.delay(names_list=names_list, user_id=user.id, email=email_addr)
+                    status = start_tweets_names_searchapi.delay(names_list=names_list, user_id=user.id, email=email_addr)
+                    # bind task to user and store in db
+                    search_task = SearchTask(user=request.user, task=status.task_id)
+                    search_task.save()
                 logger.debug("Streaming " + str(streaming_tweets))
                 # transform names list in userIds
                 # the names must be in a list for the lookup_users method
@@ -210,8 +213,11 @@ def tweets_by_name_search(request):
                     # note: to avoid error: changes to streaming.py in tweepy code was made
                     # https://github.com/tweepy/tweepy/issues/615
                     # user id param necessary because user or keys not serializable
-                    start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id, nr_of_days=nr_of_days,
+                    status = start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id, nr_of_days=nr_of_days,
                                                          email=email_addr)
+                    # bind task to user and store in db
+                    search_task = SearchTask(user=request.user, task=status.task_id)
+                    search_task.save()
                 return HttpResponseRedirect('/homescreen')
 
 
@@ -242,11 +248,18 @@ def tweets_by_searchterm_search(request):
                 logger.debug("Streaming " + str(streaming_tweets))
                 if search_api_tweets:
                     # user id param necessary because user or keys not serializable
-                    start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id, email=email_addr)
+                    status = start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id,
+                                                                      email=email_addr)
+                    # bind task to user and store in db
+                    search_task = SearchTask(user=request.user, task=status.task_id)
+                    search_task.save()
                 if streaming_tweets:
                     # user id param necessary because user or keys not serializable
-                    start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id,
+                    status = start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id,
                                                              nr_of_days=nr_of_days, email=email_addr)
+                    # bind task to user and store in db
+                    search_task = SearchTask(user=request.user, task=status.task_id)
+                    search_task.save()
                 return HttpResponseRedirect('/homescreen')
 
 

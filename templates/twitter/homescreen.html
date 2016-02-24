@@ -176,9 +176,9 @@
                 {% if not tasks %}
                     No tasks
                 {% endif %}
-                {% for key,value in tasks.items %}
-                    <!-- the id of the surrounding well is the id of the taks, needed to download the data -->
-                    <div class="well" id={{ key }}><p>Name: {{ value.name }} date: {{ value.tstamp }}<a class="btn btn-info pull-right" href="#" role="button" >Download data</a></p></div>
+                {% for task in tasks%}
+                    <!-- the id of the surrounding well is the id of the tasks, needed to download the data -->
+                    <div class="well"><p><b>Name: </b>{{ task.name }} <b>date: </b>{{ task.tstamp }} <b>state: </b>{{ task.state }}</p></div>
                 {% endfor %}
             </div>
         </div>

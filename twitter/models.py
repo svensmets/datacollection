@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import models
 from djcelery.models import TaskState
+from operator import itemgetter
 
 
 # http://stackoverflow.com/questions/1372016/django-models-custom-functions
@@ -17,10 +18,10 @@ class TaskManager(models.Manager):
         for search_task in search_tasks:
             try:
                 full_task = TaskState.objects.get(task_id=search_task.task)
-                tasks.append("Name: " + full_task.name + " Status: " + full_task.state +
-                             " Date: " + full_task.tstamp.strftime("%Y-%m-%d %H:%M:%S"))
+                tasks.append(full_task)
             except TaskState.DoesNotExist:
                 pass
+        tasks.sort(key=lambda x: x.tstamp, reverse=True)
         return tasks
 
     def get_task_of_user_in_string_format(self, user):
