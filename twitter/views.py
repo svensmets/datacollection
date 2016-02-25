@@ -16,6 +16,7 @@ from twitter.tasks import start_tweets_names_searchapi
 from twitter.util import get_twitter_keys
 from tweepy import TweepError
 import logging
+from sendfile import sendfile
 
 
 class HomescreenPage(TemplateView):
@@ -272,9 +273,14 @@ def get_task_data(request):
     :return:
     """
     if request.method == 'POST':
+        logger = logging.getLogger(__name__)
         user = request.user
-        body_unicode = request.body.decode('utf-8')
-        body = json.loads(body_unicode)
-        names = body['names']
+        task_id = request.POST.get('id', None)
+        try:
+            task = SearchTask.objects.get(task=task_id)
+            return sendfile(request, task.csv_path, attachment=True, attachment_filename='data.zip')
+        except SearchTask.DoesNotExist:
+            logger.debug("Task not found in get_task_data in twitter view")
+        return HttpResponseRedirect('/homescreen')
 
 

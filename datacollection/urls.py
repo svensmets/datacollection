@@ -16,7 +16,7 @@ Including another URLconf
 from django.conf.urls import include, url
 from django.contrib import admin
 from twitter.views import HomescreenPage, profile_information_search, tweets_by_name_search, tweets_by_searchterm_search
-from twitter.views import lookupname, get_tasks, AddTwitterKeys
+from twitter.views import lookupname, get_tasks, AddTwitterKeys, get_task_data
 from user_profile.views import LoginPage, LogoutPage
 from overview.views import OverviewPage
 
@@ -33,4 +33,5 @@ urlpatterns = [
     url(r'^get_tasks/$', get_tasks, name='get tasks'),
     url(r'^tweets_by_name_search/$', tweets_by_name_search, name='tweets_by_name'),
     url(r'^tweets_by_searchterm_search/$', tweets_by_searchterm_search, name='tweets_by_searchterm'),
+    url(r'^get_task_data/$', get_task_data,name='get_task_data'),
 ]

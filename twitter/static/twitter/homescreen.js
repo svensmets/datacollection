@@ -52,6 +52,8 @@ $(document).ready(function () {
     $("#alert-search-started").hide();
     $("#alert-name-not-valid").hide();
     $("#alert-search-problem").hide();
+    $("#alert-downloading-data-ok").hide();
+    $("#alert-problem-downloading-data").hide();
     /*
      * REFRESH TASKS
      * !! not longer used 01/02/2016
@@ -292,16 +294,18 @@ $(document).ready(function () {
      * with the taks
      */
     $("#btn-download-data").click(function(){
-        //the id of the surrounding task is the id of the task
-        var taskId = $("#btn-download-data").parent().id;
-        //start the query and return the data, with compression
+        //the id of the surrounding well is the id of the task
+        var taskId = $("#btn-download-data").closest("div").attr("id");
+        //start the query and return the data
         var data = {
             id: taskId
-        }
+        };
         //http://api.jquery.com/jquery.post/
         //post the from with ajax
-        $.post("/get_task_data/", JSON.stringify(data)).fail(function () {
-            alert("error");
+        $.post("/get_task_data/", JSON.stringify(data), function(){
+            $("#alert-downloading-data-ok").show().delay(3000).fadeOut();
+        }).fail(function () {
+            $("#alert-problem-downloading-data").show().delay(3000).fadeOut();
         });
     });
 

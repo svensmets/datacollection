@@ -7,7 +7,7 @@ import tweepy
 from celery import shared_task
 from twitter.tweepy import TwitterTweepy
 from twitter.tweepy import TweetsStreamListener
-from twitter.util import get_twitter_keys_with_user_id
+from twitter.util import get_twitter_keys_with_user_id, zip_directory
 from threading import Timer
 from datetime import datetime, timedelta
 import time
@@ -16,6 +16,7 @@ import csv
 from django.db import connection
 import logging
 from django.core.mail import send_mail
+from twitter.models import SearchTask
 
 
 @shared_task(bind=True)
@@ -154,30 +155,46 @@ def store_data(search_name, task_id, email):
     :param search_name: the name of the search_task (different actions for different search tasks)
     :param task_id: task_id to store the filenames to the database
     """
+    logger = logging.getLogger('twitter')
     if search_name == "profile information":
         all_users_from_query(task_id)
         all_relations_from_query(task_id)
         all_list_memberships_from_query(task_id)
         all_list_subscriptions_from_query(task_id)
+        # compress the directory for later sending
+        zip_and_save_directory(task_id)
         # send mail when task is finished if email address is provided
         if email:
             try:
                 send_mail('data ready', 'Twitter datacollection search is finished', 'datacoll3ction@gmail.com', [email],
                           fail_silently=False)
             except:
-                pass
+                logger.debug("Mail could not be sent")
     elif search_name == "tweets":
         all_tweets_from_query(task_id)
+        # compress the directory for later sending
+        zip_and_save_directory(task_id)
         # send mail when task is finished if email address is provided
         if email:
             try:
                 send_mail('data ready', 'Twitter datacollection search is finished', 'datacoll3ction@gmail.com', [email],
                           fail_silently=False)
             except:
-                pass
+                logger.debug("Mail could not be sent")
 
 
-def create_csv_file(name):
+def zip_and_save_directory(task_id):
+    logger = logging.getLogger('twitter')
+    try:
+        search_task = SearchTask.objects.get(task=task_id)
+        path = search_task.csv_path
+        zip_path = zip_directory(path=path, task_id=task_id)
+        search_task.csv_path = zip_path
+        search_task.save()
+    except SearchTask.DoesNotExist:
+        logger.debug("zip and save directory: task does not exist")
+
+def create_csv_file(name, task_id):
     """
     create a csv file with a certain name and a timestamp with milliseconds
     :param name:
@@ -186,15 +203,27 @@ def create_csv_file(name):
     logger = logging.getLogger('twitter')
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     csv_dir = os.path.join(base_dir, 'csv_data')
+    # make a directory to store the data
+    # the directory will be compressed and sent to the user
+    data_dir = os.path.join(csv_dir, task_id)
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
     date = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
     csv_file_name = name + "_" + date.replace(" ", "_").replace(":", "_").replace("-", "_") + ".csv"
-    csv_path = os.path.join(csv_dir, csv_file_name)
+    csv_path = os.path.join(data_dir, csv_file_name)
     csv_file = open(csv_path, 'w+', encoding='utf-8')
+    # save the path of the directory to the db for later sending through nginx
+    try:
+        search_task = SearchTask.objects.get(task=task_id)
+        search_task.csv_path = data_dir
+        search_task.save()
+    except SearchTask.DoesNotExist:
+        logger.debug("Problem with saving path of csv file")
     return csv_file
 
 
 def all_users_from_query(task_id):
-    csv_file = create_csv_file("users")
+    csv_file = create_csv_file("users", task_id=task_id)
     query = "SELECT u.user_id, u.name, u.screen_name, u.friends_count, u.followers_count, u.is_protected, " \
             "u.max_followers_exceeded, u.date_created, u.default_profile_image, u.language, u.location, " \
             "u.profile_image_url, u.user_description, u.verified, u.url FROM twitter_twitteruser u " \
@@ -203,7 +232,7 @@ def all_users_from_query(task_id):
 
 
 def all_relations_from_query(task_id):
-    csv_file = create_csv_file("relations_query")
+    csv_file = create_csv_file("relations_query", task_id=task_id)
     query = "SELECT rel.relation_used AS relation, us.user_id AS from_user_id, us.name AS from_name, " \
             "us.screen_name AS from_screen_name, us.friends_count AS from_friends_count, " \
             "us.followers_count AS from_followers_count, us.is_protected AS from_is_protected, " \
@@ -216,7 +245,7 @@ def all_relations_from_query(task_id):
 
 
 def all_list_memberships_from_query(task_id):
-    csv_file = create_csv_file("list_membership")
+    csv_file = create_csv_file("list_membership", task_id=task_id)
     query = "SELECT user.user_id, user.screen_name, list.list_id, list.list_name, list.list_full_name FROM twitter_twitterlist list " \
             "INNER JOIN twitter_twitterlist_user_membership mem ON mem.twitterlist_id = list.list_id " \
             "INNER JOIN twitter_twitteruser user ON mem.twitteruser_id = user.user_id " \
@@ -225,7 +254,7 @@ def all_list_memberships_from_query(task_id):
 
 
 def all_list_subscriptions_from_query(task_id):
-    csv_file = create_csv_file("list_subscriptions")
+    csv_file = create_csv_file("list_subscriptions", task_id=task_id)
     query = "SELECT user.user_id, user.screen_name, list.list_id, list.list_name, list.list_full_name FROM twitter_twitterlist list " \
             "INNER JOIN twitter_twitterlist_user_subscription sub ON sub.twitterlist_id = list.list_id " \
             "INNER JOIN twitter_twitteruser user ON sub.twitteruser_id = user.user_id " \
@@ -234,7 +263,7 @@ def all_list_subscriptions_from_query(task_id):
 
 
 def all_tweets_from_query(task_id):
-    csv_file = create_csv_file("tweets_search_api")
+    csv_file = create_csv_file("tweets_search_api", task_id=task_id)
     query = "SELECT t.tweet_id, t.tweeter_id, t.tweeter_name, t.tweet_text, t.tweet_date, t.is_retweet, t.mentions, " \
             "t.hashtags, t.hyperlinks, t.coordinates, t.favorite_count, t.id_str, t.in_reply_to_screen_name, " \
             "t.quoted_status_id, t.retweet_count, t.source FROM twitter_tweet t " \

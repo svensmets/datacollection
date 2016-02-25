@@ -88,6 +88,7 @@ class SearchTask(models.Model):
     """
     user = models.ForeignKey(User, null=True)
     task = models.CharField(max_length=250, null=True)
+    csv_path = models.CharField(max_length=250, null=True)
     objects = TaskManager()
 
 

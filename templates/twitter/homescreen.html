@@ -29,6 +29,8 @@
                 <div class="alert alert-success" role="alert" id="alert-search-started">Search started</div>
                 <div class="alert alert-danger" role="alert" id="alert-search-problem">Problem with search</div>
                 <div class="alert alert-danger" role="alert" id="alert-name-not-valid">Name not valid</div>
+                <div class="alert alert-danger" role="alert" id="alert-problem-downloading-data">Problem with downloading data</div>
+                <div class="alert alert-success" role="alert" id="alert-downloading-data-ok">Download will start</div>
             </div>
         </div>
         <div class="row" id="profile-information-row">
@@ -178,7 +180,18 @@
                 {% endif %}
                 {% for task in tasks%}
                     <!-- the id of the surrounding well is the id of the tasks, needed to download the data -->
-                    <div class="well"><p><b>Name: </b>{{ task.name }} <b>date: </b>{{ task.tstamp }} <b>state: </b>{{ task.state }}</p></div>
+
+                    <div class="well" id="{{ task.task_id }}"><p><b>Name: </b>{{ task.name }} <b>date: </b>
+                        {{ task.tstamp }} <b>state: </b>{{ task.state }}</p>
+                        {% if task.state == 'SUCCESS' %}
+                            <form method="post" action="/get_task_data/">
+                                {% csrf_token %}
+                                <input type="hidden" name="id" value="{{ task.task_id }}">
+                                <input type="submit" class="btn-info" value="Download data">
+                            </form>
+                        {% endif %}</div>
+
+
                 {% endfor %}
             </div>
         </div>

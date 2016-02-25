@@ -50,6 +50,7 @@ INSTALLED_APPS = (
     'tweepy',
     'celery',
     'djcelery',
+    'sendfile',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -171,9 +172,14 @@ CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
 # always eager for debugging purposes REMOVE IN PRODUCTION => code runs in one thread
 # CELERY_ALWAYS_EAGER = True
 
-#send email
+# email configuration
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER = 'datacoll3ction@gmail.com'
 EMAIL_HOST_PASSWORD = 'nJuhUpoiuK'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+
+# sendfile configuration
+SENDFILE_BACKEND = 'sendfile.backends.development'
+SENDFILE_ROOT = os.path.join(BASE_DIR, 'csv_data')
+SENDFILE_URL = '/csv_data'

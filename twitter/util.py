@@ -2,6 +2,9 @@ from django import template
 from django.core.exceptions import ObjectDoesNotExist
 from twitter.models import TwitterKeys
 from django.contrib.auth.models import User
+import os
+import zipfile
+import logging
 register = template.Library()
 
 
@@ -46,6 +49,35 @@ def get_twitter_keys_with_user_id(user_id):
     except ObjectDoesNotExist:
         return False
 
+
+def zip_directory(path, task_id):
+    """
+    Zips the directory in the path
+    # http://stackoverflow.com/questions/1855095/how-to-create-a-zip-archive-of-a-directory
+    (25/02/2016)
+    :param path: the path of the directory
+    :return:
+    """
+    logger = logging.getLogger('twitter')
+    file_name = '{0}.zip'.format(task_id)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    csv_dir = os.path.join(base_dir, 'csv_data')
+    abs_src = os.path.abspath(path)
+    if os.path.isdir(path):
+        zipf = zipfile.ZipFile(os.path.join(csv_dir, file_name), 'w', zipfile.ZIP_DEFLATED)
+        try:
+            for root, dirs, files in os.walk(path):
+                for file in files:
+                    # http://stackoverflow.com/questions/27991745/python-zip-file-and-avoid-directory-structure
+                    # (25/02/2015)
+                    absname = os.path.join(root, file)
+                    arcname = absname[len(abs_src) + 1:]
+                    zipf.write(os.path.join(root, file), arcname)
+        except Exception as e:
+            logger.debug("Problem zipping file: {0}".format(e))
+        finally:
+            zipf.close()
+        return os.path.join(csv_dir, file_name)
 
 # code starting from here was copied from djqscsv.py
 # code had to be changed (slightly) to be able to use it for python 3
