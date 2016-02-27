@@ -1,7 +1,6 @@
-import email
 from django.contrib.auth.decorators import login_required
 import json
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from twitter.forms import NamesTextAreaForm, SearchOptionsForm, AddTwitterKeysForm
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -13,7 +12,7 @@ from twitter.tasks import start_tweets_by_name_streaming
 from twitter.tasks import start_tweets_searchterms_streaming
 from twitter.tasks import start_tweets_searchterms_searchapi
 from twitter.tasks import start_tweets_names_searchapi
-from twitter.util import get_twitter_keys
+from twitter.util import get_twitter_keys, has_running_task, not_guest
 from tweepy import TweepError
 import logging
 from sendfile import sendfile
@@ -129,6 +128,7 @@ def get_tasks(request):
         return HttpResponse(json.dumps(data), content_type='application/json')
 
 
+@not_guest
 def profile_information_search(request):
     """
     Starts a task: search of profile information
@@ -146,6 +146,7 @@ def profile_information_search(request):
             logger = logging.getLogger(__name__)
             logger.debug("profile information search")
             user = request.user
+
             keys = get_twitter_keys(user)
             if keys is False:
                 return HttpResponseRedirect('/addkeys/')
@@ -159,18 +160,25 @@ def profile_information_search(request):
                 list_memberships = body['listmemberships']
                 list_subscriptions = body['listsubscriptions']
                 relationships_checked = body['relationshipschecked']
-                # start search task
-                params = {'friends': friends, 'followers': followers, 'max_followers': max_followers,
-                          'list_memberships': list_memberships, 'list_subscriptions': list_subscriptions,
-                          'relationships_checked': relationships_checked}
-                # user id param necessary because user or keys not serializable
-                status = profile_information_search_task.delay(names=names, user_id=user.id, email=user.email, **params)
-                # bind task to user and store in db
-                search_task = SearchTask(user=request.user, task=status.task_id)
-                search_task.save()
-                return HttpResponseRedirect('/homescreen/')
+                # user can only start a taks if no tasks are running (for this user)
+                if not has_running_task(user):
+                    # user has no tasks running
+                    # start search task
+                    params = {'friends': friends, 'followers': followers, 'max_followers': max_followers,
+                              'list_memberships': list_memberships, 'list_subscriptions': list_subscriptions,
+                              'relationships_checked': relationships_checked}
+                    # user id param necessary because user or keys not serializable
+                    status = profile_information_search_task.delay(names=names, user_id=user.id, email=user.email, **params)
+                    # bind task to user and store in db
+                    search_task = SearchTask(user=request.user, task=status.task_id)
+                    search_task.save()
+                    return HttpResponseRedirect('/homescreen/')
+                else:
+                    # user has tasks running and can't do any searches
+                    return JsonResponse({'error': 'task running'})
 
 
+@not_guest
 def tweets_by_name_search(request):
     """
     Start a streaming search of tweets based on a list of names
@@ -195,33 +203,40 @@ def tweets_by_name_search(request):
                 nr_of_days = body['nrOfDays']
                 logger.debug("Search api " + str(search_api_tweets))
                 email_addr = user.email
-                if search_api_tweets:
-                    names_list = str.split(names, ',')
-                    # user id param necessary because user or keys not serializable
-                    status = start_tweets_names_searchapi.delay(names_list=names_list, user_id=user.id, email=email_addr)
-                    # bind task to user and store in db
-                    search_task = SearchTask(user=request.user, task=status.task_id)
-                    search_task.save()
-                logger.debug("Streaming " + str(streaming_tweets))
-                # transform names list in userIds
-                # the names must be in a list for the lookup_users method
-                if streaming_tweets:
-                    names_list = str.split(names, ',')
-                    tweepy = TwitterTweepy(keys=keys)
-                    # first get the ids of the screenames
-                    ids = tweepy.get_ids_from_screennames(names_list)
-                    logger.debug("ids count= " + str(len(ids)))
-                    # note: to avoid error: changes to streaming.py in tweepy code was made
-                    # https://github.com/tweepy/tweepy/issues/615
-                    # user id param necessary because user or keys not serializable
-                    status = start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id, nr_of_days=nr_of_days,
-                                                         email=email_addr)
-                    # bind task to user and store in db
-                    search_task = SearchTask(user=request.user, task=status.task_id)
-                    search_task.save()
-                return HttpResponseRedirect('/homescreen')
+                # user must not have a task running, otherwise a to great number of searches could be run
+                if not has_running_task(user):
+                    # user has no tasks running
+                    if search_api_tweets:
+                        names_list = str.split(names, ',')
+                        # user id param necessary because user or keys not serializable
+                        status = start_tweets_names_searchapi.delay(names_list=names_list, user_id=user.id, email=email_addr)
+                        # bind task to user and store in db
+                        search_task = SearchTask(user=request.user, task=status.task_id)
+                        search_task.save()
+                    logger.debug("Streaming " + str(streaming_tweets))
+                    # transform names list in userIds
+                    # the names must be in a list for the lookup_users method
+                    if streaming_tweets:
+                        names_list = str.split(names, ',')
+                        tweepy = TwitterTweepy(keys=keys)
+                        # first get the ids of the screenames
+                        ids = tweepy.get_ids_from_screennames(names_list)
+                        logger.debug("ids count= " + str(len(ids)))
+                        # note: to avoid error: changes to streaming.py in tweepy code was made
+                        # https://github.com/tweepy/tweepy/issues/615
+                        # user id param necessary because user or keys not serializable
+                        status = start_tweets_by_name_streaming.delay(user_ids=ids, user_id=user.id, nr_of_days=nr_of_days,
+                                                             email=email_addr)
+                        # bind task to user and store in db
+                        search_task = SearchTask(user=request.user, task=status.task_id)
+                        search_task.save()
+                    return HttpResponseRedirect('/homescreen')
+                else:
+                    # user has tasks running and can't do any searches
+                    return JsonResponse({'error': 'task running'})
 
 
+@not_guest
 def tweets_by_searchterm_search(request):
     """
     Start a streaming search of tweets based on a list of comma
@@ -247,25 +262,32 @@ def tweets_by_searchterm_search(request):
                 email_addr = user.email
                 searchterm_list = str.split(searchterms, ',')
                 logger.debug("Streaming " + str(streaming_tweets))
-                if search_api_tweets:
-                    # user id param necessary because user or keys not serializable
-                    status = start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id,
-                                                                      email=email_addr)
-                    # bind task to user and store in db
-                    search_task = SearchTask(user=request.user, task=status.task_id)
-                    search_task.save()
-                if streaming_tweets:
-                    # user id param necessary because user or keys not serializable
-                    status = start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id,
-                                                             nr_of_days=nr_of_days, email=email_addr)
-                    # bind task to user and store in db
-                    search_task = SearchTask(user=request.user, task=status.task_id)
-                    search_task.save()
-                return HttpResponseRedirect('/homescreen')
+                # user can only start a search if no other tasks are running
+                if not has_running_task(user):
+                    # the user has no running tasks
+                    if search_api_tweets:
+                        # user id param necessary because user or keys not serializable
+                        status = start_tweets_searchterms_searchapi.delay(searchterms=searchterm_list, user_id=user.id,
+                                                                          email=email_addr)
+                        # bind task to user and store in db
+                        search_task = SearchTask(user=request.user, task=status.task_id)
+                        search_task.save()
+                    if streaming_tweets:
+                        # user id param necessary because user or keys not serializable
+                        status = start_tweets_searchterms_streaming.delay(searchterms=searchterm_list, user_id=user.id,
+                                                                 nr_of_days=nr_of_days, email=email_addr)
+                        # bind task to user and store in db
+                        search_task = SearchTask(user=request.user, task=status.task_id)
+                        search_task.save()
+                    return HttpResponseRedirect('/homescreen')
+                else:
+                    # user has tasks running and can't do any searches
+                    return JsonResponse({'error': 'task running'})
 
 
 def get_task_data(request):
     """
+    Download data from a certain task
     http://www.azavea.com/blogs/labs/2014/03/exporting-django-querysets-to-csv/
     https://github.com/johnsensible/django-sendfile
     (access on 01/02/2016)

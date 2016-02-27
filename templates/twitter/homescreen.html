@@ -12,11 +12,15 @@
             <h1>Twitter data</h1>
         </div>
     </div>
-
     <div class="container">
         <div class="row">
             <!-- show possible search tasks the user can do -->
             <div class="col-md-4">
+                <!-- for superuser, extra settings are available -->
+                {% if request.user.is_superuser %}
+                    <h2>Admin settings</h2>
+                    <p><a class="btn btn-default" href="/admin/" role="button" id="btn-search-profile-information">admin settings &raquo;</a></p>
+                {% endif %}
                 <h2>Search tasks</h2>
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-profile-information">Search Profile Information &raquo;</a></p>
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-names">Search Tweets based on Names &raquo;</a></p>
@@ -31,6 +35,7 @@
                 <div class="alert alert-danger" role="alert" id="alert-name-not-valid">Name not valid</div>
                 <div class="alert alert-danger" role="alert" id="alert-problem-downloading-data">Problem with downloading data</div>
                 <div class="alert alert-success" role="alert" id="alert-downloading-data-ok">Download will start</div>
+                <div class="alert alert-danger" role="alert" id="alert-task-running">You have a task running, come back when the task is finished</div>
             </div>
         </div>
         <div class="row" id="profile-information-row">

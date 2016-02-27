@@ -54,6 +54,23 @@ $(document).ready(function () {
     $("#alert-search-problem").hide();
     $("#alert-downloading-data-ok").hide();
     $("#alert-problem-downloading-data").hide();
+    $("#alert-task-running").hide();
+
+    //disable search buttons for x seconds
+    //to prevent users to start searches multiple times and crash the server
+    //http://stackoverflow.com/questions/10932766/disable-the-submit-button-after-clicking-and-enable-it-back-again-after-a-few-se
+    //(26/02/2016)
+    function disableSearchButtons(){
+        var seconds = 5;
+        $("#bt-searchterms-start").prop("disabled", true);
+        $("#bt-tweetsbyname-start").prop("disabled", true);
+        $("#bt-search-options").prop("disabled", true);
+        setTimeout(function(){
+            $("#bt-searchterms-start").prop("disabled", false);
+            $("#bt-tweetsbyname-start").prop("disabled", false);
+            $("#bt-search-options").prop("disabled", false);
+        }, seconds*1000);
+    }
     /*
      * REFRESH TASKS
      * !! not longer used 01/02/2016
@@ -111,6 +128,8 @@ $(document).ready(function () {
     });
     //submit profile information search task
     $("#form-search-options").submit(function (event) {
+        //disable search button for x seconds
+        disableSearchButtons();
         //stop form from submitting normally
         event.preventDefault();
         //gather all information
@@ -155,8 +174,15 @@ $(document).ready(function () {
             }
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
-            $.post("/profile-information-search/", JSON.stringify(data), function(){
-                $("#alert-search-started").show().delay(3000).fadeOut();
+            $.post("/profile-information-search/", JSON.stringify(data), function(data){
+                //if user has task running: show error, else show search started message
+                //if user has task running: show error message, otherwise show search started message
+                var message = data['error'];
+                if(message === 'task running'){
+                    $("#alert-task-running").show().delay(5000).fadeOut();
+                }else{
+                    $("#alert-search-started").show().delay(3000).fadeOut();
+                }
             }).fail(function () {
                 $("#alert-search-problem").show().delay(3000).fadeOut();
             });
@@ -196,6 +222,8 @@ $(document).ready(function () {
     });
     //start streaming search by name
     $("#form-tweets-by-name-search-options").submit(function (event) {
+        //disable search buttons for x seconds
+        disableSearchButtons();
         //stop form from submitting normally
         event.preventDefault();
         //gather all information
@@ -227,8 +255,15 @@ $(document).ready(function () {
             }
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
-            $.post("/tweets_by_name_search/", JSON.stringify(data), function(){
-                $("#alert-search-started").show().delay(3000).fadeOut();
+            $.post("/tweets_by_name_search/", JSON.stringify(data), function(data){
+                //if user has task running: show error message, otherwise show search started message
+                var message = data['error'];
+                if(message === 'task running'){
+                    $("#alert-task-running").show().delay(5000).fadeOut();
+                }else{
+                    $("#alert-search-started").show().delay(3000).fadeOut();
+                }
+
             }).fail(function () {
                 $("#alert-search-problem").show().delay(3000).fadeOut();
             });
@@ -251,6 +286,8 @@ $(document).ready(function () {
     });
     //start search
     $("#form-tweets-by-searchterm-options").submit(function (event) {
+        //disable search buttons for x seconds
+        disableSearchButtons();
         //stop form from submitting normally
         event.preventDefault();
         //gather all information from the input fields
@@ -281,8 +318,14 @@ $(document).ready(function () {
                 nrOfDays: nrOfDays
             };
             //post the from with ajax
-            $.post("/tweets_by_searchterm_search/", JSON.stringify(data), function(){
-                $("#alert-search-started").show().delay(3000).fadeOut();
+            $.post("/tweets_by_searchterm_search/", JSON.stringify(data), function(data){
+                //if user has task running: show error message, otherwise show search started message
+                var message = data['error'];
+                if(message === 'task running'){
+                    $("#alert-task-running").show().delay(5000).fadeOut();
+                }else{
+                    $("#alert-search-started").show().delay(3000).fadeOut();
+                }
             }).fail(function () {
                 $("#alert-search-problem").show().delay(3000).fadeOut();
             });

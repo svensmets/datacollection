@@ -1,10 +1,12 @@
 from django import template
 from django.core.exceptions import ObjectDoesNotExist
-from twitter.models import TwitterKeys
+from djcelery.models import TaskState
+from twitter.models import TwitterKeys, SearchTask
 from django.contrib.auth.models import User
 import os
 import zipfile
 import logging
+from django.contrib.auth.decorators import user_passes_test
 register = template.Library()
 
 
@@ -20,6 +22,22 @@ def add_css(field, css):
     :return the field with css added to it
     """
     return field.as_widget(attrs={"class": css})
+
+
+def has_running_task(user):
+    """
+    Checks if a user has a task running
+    :param user: the user to check
+    :return: True if user has a task running, False if not
+    """
+    # note: raw query must include primary key, otherwise an error is thrown
+    tasks = TaskState.objects.raw("SELECT dj.id, dj.task_id, dj.name FROM djcelery_taskstate dj INNER JOIN twitter_searchtask twit "
+                                 "ON dj.task_id = twit.task WHERE (dj.state LIKE {0} OR dj.state LIKE {1}) "
+                                 "AND twit.user_id = {2} LIMIT 1".format("'STARTED'", "'RECEIVED'", user.id));
+    # if tasks contains a task: the user has a task running, if no taks, return false
+    for task in tasks:
+        return True
+    return False
 
 
 def get_twitter_keys(user):
@@ -48,6 +66,20 @@ def get_twitter_keys_with_user_id(user_id):
         return keys
     except ObjectDoesNotExist:
         return False
+
+
+def not_guest(function=None):
+    """
+    Used in views to prevent guest users from doing certain searches
+    https://gist.github.com/bradmontgomery/5657267
+    (27/02/2016)
+    :param function:
+    :return:
+    """
+    actual_decorator = user_passes_test(
+        lambda u: u.is_authenticated() and not u.groups.filter(name='guest').exists()
+    )
+    return actual_decorator(function)
 
 
 def zip_directory(path, task_id):
