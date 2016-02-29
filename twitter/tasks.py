@@ -194,6 +194,7 @@ def zip_and_save_directory(task_id):
     except SearchTask.DoesNotExist:
         logger.debug("zip and save directory: task does not exist")
 
+
 def create_csv_file(name, task_id):
     """
     create a csv file with a certain name and a timestamp with milliseconds
@@ -283,7 +284,7 @@ def write_cursor_to_csv(query, csv_file):
     """
     cursor = connection.cursor()
     cursor.execute(query)
-    csv_writer = csv.writer(csv_file, delimiter=',')
+    csv_writer = csv.writer(csv_file)
     csv_writer.writerow([i[0] for i in cursor.description])
     csv_writer.writerows(cursor)
     csv_file.close()

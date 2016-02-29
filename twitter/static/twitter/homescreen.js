@@ -150,6 +150,9 @@ $(document).ready(function () {
             var maxFollowers = $("#max-followers-input").val();
             if (!maxFollowers) {
                 maxFollowers = 110000;
+            }else{
+                // to avoid parse error
+                maxFollowers = parseInt(maxFollowers);
             }
             if ($("#followers-checkbox").is(":checked")) {
                 followersChecked = true;
