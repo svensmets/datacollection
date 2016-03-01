@@ -212,7 +212,7 @@ def create_csv_file(name, task_id):
     date = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
     csv_file_name = name + "_" + date.replace(" ", "_").replace(":", "_").replace("-", "_") + ".csv"
     csv_path = os.path.join(data_dir, csv_file_name)
-    csv_file = open(csv_path, 'w+', encoding='utf-8')
+    csv_file = open(csv_path, 'w+', encoding='utf_8_sig')
     # save the path of the directory to the db for later sending through nginx
     try:
         search_task = SearchTask.objects.get(task=task_id)

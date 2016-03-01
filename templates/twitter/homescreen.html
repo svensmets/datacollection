@@ -19,7 +19,7 @@
                 <!-- for superuser, extra settings are available -->
                 {% if request.user.is_superuser %}
                     <h2>Admin settings</h2>
-                    <p><a class="btn btn-default" href="/admin/" role="button" id="btn-admin-settings">admin settings &raquo;</a></p>
+                    <p><a class="btn btn-default" href={% url "admin:index" %} role="button" id="btn-admin-settings">admin settings &raquo;</a></p>
                 {% endif %}
                 <h2>Search tasks</h2>
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-profile-information">Search Profile Information &raquo;</a></p>
