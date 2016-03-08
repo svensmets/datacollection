@@ -23,6 +23,7 @@ from overview.views import OverviewPage
 urlpatterns = [
     url(r'^$', OverviewPage.as_view(), name='overview'),
     url(r'^admin/', include(admin.site.urls)),
+    url(r'^newsscraper/$', include('newsscraper.urls')),
     url(r'^homescreen/$', HomescreenPage.as_view(), name='homescreen'),
     url(r'^twitter/$', HomescreenPage.as_view(), name='twitter'),
     url(r'^addkeys/$', AddTwitterKeys.as_view(), name='add keys'),

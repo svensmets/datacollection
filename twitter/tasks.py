@@ -47,13 +47,16 @@ def profile_information_search_task(self, names, user_id, email, **kwargs):
 def start_tweets_names_searchapi(self, names_list, user_id, email):
     """
     Get tweets based on names via Search API
-    Tweets of 7 days in the past will be collected
+    Tweets of the user timeline will be collected (up to 3200)
     :param names_list:
     """
     task_id = self.request.id
     keys = get_twitter_keys_with_user_id(user_id)
     my_tweepy = TwitterTweepy(keys)
-    my_tweepy.get_tweets_names_searchapi(query_params=names_list, task_id=task_id)
+    # the following commented out search only searched for tweets seven days in the past
+    # my_tweepy.get_tweets_names_searchapi(query_params=names_list, task_id=task_id)
+    # new search uses timeline to do the search
+    my_tweepy.get_tweets_timeline(names=names_list, task_id=task_id)
     store_data(search_name="tweets", task_id=task_id, email=email)
 
 

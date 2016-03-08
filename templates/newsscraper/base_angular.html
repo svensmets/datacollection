@@ -1,0 +1,21 @@
+<!-- Template van http://getbootstrap.com/examples/jumbotron/ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.0/angular.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+    {% load staticfiles bootstrap3 %}
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+    <script src="{% static "djng/js/django-angular.min.js" %}"></script>
+    {% block css %}
+    {% endblock %}
+    {% block metatags %}{% endblock %}
+    <title>{% block title %}{% endblock %}</title>
+</head>
+{% block content %}
+{% endblock %}
+{% block js %}
+{% endblock %}
+</html>

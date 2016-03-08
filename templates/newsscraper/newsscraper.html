@@ -1,0 +1,48 @@
+<!-- Code from getbootstrap.com/examples/jumbotron/?# -->
+{% extends "newsscraper/base_angular.html" %}
+{% load staticfiles bootstrap3 djng_tags %}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+{% block css %}
+    <link rel="stylesheet", type="text/css", href="{% static 'newsscraper/style.css' %}"/>
+{% endblock %}
+{% block app_name %}
+    Newsscraper
+{% endblock %}
+{% block content %}
+    <body ng-app="newsscraper">
+        <nav class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href=""></a>
+                    <a class="navbar-brand" href="{% url 'overview' %}">Back</a>
+                </div>
+                <div id="navbar" class="navbar-collapse collapse">
+                    <div class="navbar-form navbar-right">
+                        <a id="login-button" href="{% url 'login' %}" role="button" class="btn btn-default">Login/Logout</a>
+                    </div>
+                </div><!--/.navbar-collapse -->
+            </div>
+        </nav>
+        <div class="jumbotron">
+            <h1>Newsscraper</h1>
+        </div>
+        <div class="container">
+            <form action="/start_search/" method="post">
+                {% csrf_token %}
+                {% bootstrap_form search_archive_form layout='inline' %}
+                {% bootstrap_form_errors search_archive_form %}
+                <input type="submit" value="Start search"/>
+            </form>
+        </div>
+    </body>
+{% endblock %}
+{% block js %}
+    <script src="{% static 'newsscraper/app.js' %}"></script>
+{% endblock %}

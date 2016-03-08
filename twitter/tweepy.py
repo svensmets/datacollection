@@ -224,7 +224,6 @@ class TwitterTweepy:
                             # reset connection
                             self.logger.debug("Tweeperror: resetting connection")
                             self.api = self.authenticate()
-                        self.logger.debug("end of relationships friends")
                         break
                     # remove duplicates
                     set_ids = set(list_ids)
@@ -234,6 +233,7 @@ class TwitterTweepy:
                             relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
                                                            relation_used="friends", task_id=task_id)
                             relation.save()
+                self.logger.debug("end of relationships friends")
             else:
                 self.logger.debug("Build relationships based on followers")
                 # build followers relationships if the total numbert of followers is lower than
@@ -247,7 +247,6 @@ class TwitterTweepy:
                         except tweepy.TweepError:
                             # reset connection
                             self.api = self.authenticate()
-                        self.logger.debug("end of relationships followers")
                         break
                     # remove duplicates
                     set_ids = set(list_ids)
@@ -257,6 +256,7 @@ class TwitterTweepy:
                             relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
                                                            relation_used="followers", task_id=task_id)
                             relation.save()
+                self.logger.debug("end of relationships followers")
         self.logger.debug("End of search")
 
     def get_tweets_searchterms_searchapi(self, query_params, task_id):
@@ -320,6 +320,25 @@ class TwitterTweepy:
                 break
             self.logger.debug("No more tweets for {0}".format(query_string))
         self.logger.debug("End of search")
+
+    def get_tweets_timeline(self, names, task_id):
+        """
+        Get the tweets of a user using GET statuses/user_timeline
+        :param names: a list of names to get the timeline of
+        :param task_id: the task id needed to identify the tweets in the db
+        """
+        user_names = filter(None, names)
+        for name in user_names:
+            self.logger.debug("Timeline search of {0}".format(name))
+            while True:
+                try:
+                    for status in tweepy.Cursor(self.api.user_timeline, screen_name=name).items():
+                        self._save_tweet(status=status, task_id=task_id)
+                except tweepy.TweepError:
+                    # reset connection
+                    self.api = self.authenticate()
+                break
+        self.logger.debug("Timeline search ended")
 
     def get_ids_from_screennames(self, screennames):
         """

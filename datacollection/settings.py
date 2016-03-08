@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
 import djcelery
+from datetime import timedelta
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,11 +47,13 @@ INSTALLED_APPS = (
     'bootstrap3',
     'twitter',
     'user_profile',
+    'newsscraper',
     'overview',
     'tweepy',
     'celery',
     'djcelery',
     'sendfile',
+    'djng',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -169,6 +172,11 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
+
+# expiration of task is default one or several days, must be 30 days
+CELERYCAM_EXPIRE_SUCCESS = timedelta(days=30)
+CELERYCAM_EXPIRE_ERROR = timedelta(days=30)
+CELERYCAM_EXPIRE_PENDING = timedelta(days=30)
 # always eager for debugging purposes REMOVE IN PRODUCTION => code runs in one thread
 # CELERY_ALWAYS_EAGER = True
 
