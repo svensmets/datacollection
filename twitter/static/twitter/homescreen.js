@@ -5,21 +5,31 @@ $(document).ready(function () {
     $("#profile-information-row").css('display', 'none');
     $("#tweets-by-name-row").css('display', 'none');
     $("#tweets-by-searchterm-row").css('display', 'none');
+    $("#random-tweets-row").css('display', 'none');
 
     $("#btn-search-profile-information").click(function () {
         $("#profile-information-row").fadeIn();
         $("#tweets-by-name-row").fadeOut();
         $("#tweets-by-searchterm-row").fadeOut();
+        $("#random-tweets-row").fadeOut();
     });
     $("#btn-search-tweets-names").click(function () {
         $("#profile-information-row").fadeOut();
         $("#tweets-by-name-row").fadeIn();
         $("#tweets-by-searchterm-row").fadeOut();
+        $("#random-tweets-row").fadeOut();
     });
     $("#btn-search-tweets-searchterms").click(function () {
         $("#profile-information-row").fadeOut();
         $("#tweets-by-name-row").fadeOut();
         $("#tweets-by-searchterm-row").fadeIn();
+        $("#random-tweets-row").fadeOut();
+    });
+    $("#btn-search-tweets-random").click(function(){
+        $("#profile-information-row").fadeOut();
+        $("#tweets-by-name-row").fadeOut();
+        $("#tweets-by-searchterm-row").fadeOut()
+        $("#random-tweets-row").fadeIn();
     });
     //profile information search: if relationship checkbox is checked: friends and followers must be checked
     $("#relationships-checkbox").click(function(){
@@ -65,10 +75,12 @@ $(document).ready(function () {
         $("#bt-searchterms-start").prop("disabled", true);
         $("#bt-tweetsbyname-start").prop("disabled", true);
         $("#bt-search-options").prop("disabled", true);
+        $("#bt-randomtweets-start").prop("disabled", true);
         setTimeout(function(){
             $("#bt-searchterms-start").prop("disabled", false);
             $("#bt-tweetsbyname-start").prop("disabled", false);
             $("#bt-search-options").prop("disabled", false);
+            $("#bt-randomtweets-start").prop("disabled", false);
         }, seconds*1000);
     }
     /*
@@ -77,7 +89,7 @@ $(document).ready(function () {
      * */
     // refresh tasks: necessary because task does not yet exist when user performs a search and the screen returns
     $("#refresh-tasks-button").click(function () {
-        $.post("/get_tasks/", function (data) {
+        $.post("/twitter/get_tasks/", function (data) {
             //clear tasks shown
             $("#tasks-row").empty();
             //gather data from response
@@ -110,7 +122,7 @@ $(document).ready(function () {
         if ($("#add-name-input").val()) {
             var name = $("#add-name-input").val();
             /* check name, if exists as a twittername add it to the textarea*/
-            $.get("/lookupname/", {name: name}, function (data) {
+            $.get("/twitter/lookupname/", {name: name}, function (data) {
                 var response = data['exists'];
                 if (response === 'true') {
                     /*add name to textarea*/
@@ -177,7 +189,7 @@ $(document).ready(function () {
             }
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
-            $.post("/profile-information-search/", JSON.stringify(data), function(data){
+            $.post("/twitter/profile-information-search/", JSON.stringify(data), function(data){
                 //if user has task running: show error, else show search started message
                 //if user has task running: show error message, otherwise show search started message
                 var message = data['error'];
@@ -203,7 +215,7 @@ $(document).ready(function () {
     $("#add-tweetname-button").click(function () {
         if ($("#add-tweetname-input").val()) {
             var name = $("#add-tweetname-input").val();
-            $.get("/lookupname/", {name: name}, function (data) {
+            $.get("/twitter/lookupname/", {name: name}, function (data) {
                 var response = data['exists'];
                 if (response === 'true') {
                     /*add name to textarea*/
@@ -258,7 +270,7 @@ $(document).ready(function () {
             }
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
-            $.post("/tweets_by_name_search/", JSON.stringify(data), function(data){
+            $.post("/twitter/tweets_by_name_search/", JSON.stringify(data), function(data){
                 //if user has task running: show error message, otherwise show search started message
                 var message = data['error'];
                 if(message === 'task running'){
@@ -321,7 +333,7 @@ $(document).ready(function () {
                 nrOfDays: nrOfDays
             };
             //post the from with ajax
-            $.post("/tweets_by_searchterm_search/", JSON.stringify(data), function(data){
+            $.post("/twitter/tweets_by_searchterm_search/", JSON.stringify(data), function(data){
                 //if user has task running: show error message, otherwise show search started message
                 var message = data['error'];
                 if(message === 'task running'){
@@ -333,6 +345,28 @@ $(document).ready(function () {
                 $("#alert-search-problem").show().delay(3000).fadeOut();
             });
         }
+    });
+
+    /**
+     * RANDOM TWEETS
+     * */
+    $("#form-tweets-random").submit(function(event){
+        //disable search buttons for x seconds
+        disableSearchButtons();
+        //stop form from submitting normally
+        event.preventDefault();
+        //post the form with ajax
+        $.post("/twitter/random_tweets_search/", function(data){
+            //if user has task running: show error message, otherwise show search started message
+            var message = data['error'];
+            if(message === 'task running'){
+                $("#alert-task-running").show().delay(5000).fadeOut();
+            }else{
+                $("#alert-search-started").show().delay(3000).fadeOut();
+            }
+        }).fail(function () {
+            $("#alert-search-problem").show().delay(3000).fadeOut();
+        });
     });
 
     /**
@@ -348,7 +382,7 @@ $(document).ready(function () {
         };
         //http://api.jquery.com/jquery.post/
         //post the from with ajax
-        $.post("/get_task_data/", JSON.stringify(data), function(){
+        $.post("/twitter/get_task_data/", JSON.stringify(data), function(){
             $("#alert-downloading-data-ok").show().delay(3000).fadeOut();
         }).fail(function () {
             $("#alert-problem-downloading-data").show().delay(3000).fadeOut();

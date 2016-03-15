@@ -15,7 +15,9 @@ class LoginPage(FormView):
         return render(request, 'user_profile/login.html', {'form': form})
 
     def post(self, request):
-        """Login user if valid password and username is submitted"""
+        """
+        Login user if valid password and username is submitted
+        """
         form = LoginForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']
@@ -23,7 +25,7 @@ class LoginPage(FormView):
             user = authenticate(username=username, password=password)
             if user and user.is_active:
                 login(request, user)
-                return HttpResponseRedirect('/homescreen/')
+                return HttpResponseRedirect('/overview/')
             else:
                 message = 'user not found'
                 return render(request, 'user_profile/login.html', {'login_message': message, 'form': form})
@@ -35,7 +37,7 @@ class LoginPage(FormView):
 class LogoutPage(View):
     def post(self, request, *args, **kwargs):
         logout(request)
-        return HttpResponseRedirect('/homescreen/')
+        return HttpResponseRedirect('/overview/')
 
 
 

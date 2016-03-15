@@ -1,48 +1,166 @@
-<!-- Code from getbootstrap.com/examples/jumbotron/?# -->
+<!-- Code from getbootstrap.com/examples/jumbotron/?#
+ http://www.bossable.com/1745/angularjs-material-design-contact-form/
+ (14/03/2016)
+ -->
 {% extends "newsscraper/base_angular.html" %}
 {% load staticfiles bootstrap3 djng_tags %}
 {% bootstrap_css %}
 {% bootstrap_javascript %}
 {% block css %}
     <link rel="stylesheet", type="text/css", href="{% static 'newsscraper/style.css' %}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angular-material/1.0.6/angular-material.css">
 {% endblock %}
 {% block app_name %}
     Newsscraper
 {% endblock %}
 {% block content %}
     <body ng-app="newsscraper">
-        <nav class="navbar navbar-inverse navbar-fixed-top">
-            <div class="container">
-                <div class="navbar-header">
-                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-                        <span class="sr-only">Toggle navigation</span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                    </button>
-                    <a class="navbar-brand" href=""></a>
-                    <a class="navbar-brand" href="{% url 'overview' %}">Back</a>
-                </div>
-                <div id="navbar" class="navbar-collapse collapse">
-                    <div class="navbar-form navbar-right">
-                        <a id="login-button" href="{% url 'login' %}" role="button" class="btn btn-default">Login/Logout</a>
+        <section layout="row" flex>
+            <md-sidenav md-component-id="left" class="md-sidenav-left" md-is-locked-open="$mdMedia('gt-md')"
+                        md-disable-backdrop>
+                <md-toolbar class="md-info">
+                    <div class="md-toolbar-tools">
+                        <md-button aria-label="Go Back" ng-href="/overview/">
+                            Back
+                        </md-button>
+                        <h2 class="md-flex">Newsscraper</h2>
                     </div>
-                </div><!--/.navbar-collapse -->
-            </div>
-        </nav>
-        <div class="jumbotron">
-            <h1>Newsscraper</h1>
-        </div>
-        <div class="container">
-            <form action="/start_search/" method="post">
-                {% csrf_token %}
-                {% bootstrap_form search_archive_form layout='inline' %}
-                {% bootstrap_form_errors search_archive_form %}
-                <input type="submit" value="Start search"/>
-            </form>
-        </div>
+                </md-toolbar>
+                <md-button ng-href="" target="_blank">Archive Search</md-button>
+            </md-sidenav>
+
+            <md-content flex layout-padding>
+                <md-tabs md-dynamic-height md-border-bottom>
+                    <md-tab label="De Standaard">
+                        <md-content class="md-padding: 40px;" ng-cloak>
+                            <div ng-controller="ArchiveSearchCtrl as as" >
+                                <form name="standaardForm" data-ng-submit="StandaardSearch()">
+                                    <md-input-container class="md-block">
+                                        <label>Newspaper:</label>
+                                        <input ng-model="newsPaperName" value="De Standaard" ng-readonly="true" >
+                                    </md-input-container>
+                                    <md-input-container class="md-block">
+                                        <label>Search term:</label>
+                                        <input ng-model="searchTerm" required>
+                                    </md-input-container>
+                                    <!-- md-datepicker cannot be placed into md-input-container -->
+                                    <div layout="row" class="datepicker-div" layout-margin>
+                                        <label>Start date:</label>
+                                        <md-datepicker ng-model="startDate" md-placeholder="Enter date"
+                                                       md-min-date="minDate" md-max-date="maxDate" required></md-datepicker>
+
+                                    </div>
+                                    <div layout="row" class="datepicker-div" layout-margin>
+                                        <label>End date:</label>
+                                        <md-datepicker ng-model="endDate" md-placeholder="Enter date"
+                                                       md-min-date="minDate" md-max-date="maxDate" required></md-datepicker>
+                                    </div>
+                                    <md-input-container class="md-block">
+                                        <md-button type="submit" class="md-primary"
+                                                   ng-class="{'md-raised md-hue-1': (standaardForm.$dirty && standaardForm.$valid) }"
+                                                   aria-label="Save Project">Send</md-button>
+                                    </md-input-container>
+                                </form>
+                            </div>
+                        </md-content>
+                    </md-tab>
+                    <md-tab label="De Morgen">
+                        <md-content class="md-padding">
+                            <div ng-controller="ArchiveSearchCtrl as as" >
+                                <form name="morgenForm" data-ng-submit="MorgenSearch()">
+                                    <md-input-container class="md-block">
+                                        <label>Newspaper:</label>
+                                        <input ng-model="newsPaperName" value="De Morgen" ng-readonly="true" >
+                                    </md-input-container>
+                                    <md-input-container class="md-block">
+                                        <label>Search term:</label>
+                                        <input ng-model="searchTerm" required>
+                                    </md-input-container>
+                                    <!-- md-datepicker cannot be placed into md-input-container -->
+                                    <div layout="row" class="datepicker-div" layout-margin>
+                                        <label>Start date:</label>
+                                        <md-datepicker ng-model="startDate" md-placeholder="Enter date"
+                                                       md-min-date="minDate" md-max-date="maxDate" required></md-datepicker>
+
+                                    </div>
+                                    <div layout="row" class="datepicker-div" layout-margin>
+                                        <label>End date:</label>
+                                        <md-datepicker ng-model="endDate" md-placeholder="Enter date"
+                                                       md-min-date="minDate" md-max-date="maxDate" required></md-datepicker>
+                                    </div>
+                                    <md-input-container class="md-block">
+                                        <md-button type="submit" class="md-primary"
+                                                   ng-class="{'md-raised md-hue-1': (standaardForm.$dirty && standaardForm.$valid) }"
+                                                   aria-label="Save Project">Send</md-button>
+                                    </md-input-container>
+                                </form>
+                            </div>
+                        </md-content>
+                    </md-tab>
+                    <md-tab label="Het Laatste Nieuws">
+                        <md-content class="md-padding">
+                            <div ng-controller="ArchiveSearchCtrl as as" >
+                                <form name="hlnForm" data-ng-submit="StandaardSearch()">
+                                    <md-input-container class="md-block">
+                                        <label>Newspaper:</label>
+                                        <input ng-model="newsPaperName" value="Het Laatste Nieuws" ng-readonly="true" >
+                                    </md-input-container>
+                                    <md-input-container class="md-block">
+                                        <label>Search term:</label>
+                                        <input ng-model="searchTerm" required>
+                                    </md-input-container>
+                                    <!-- md-datepicker cannot be placed into md-input-container -->
+                                    <div layout="row" class="datepicker-div" layout-margin>
+                                        <label>Start date:</label>
+                                        <md-datepicker ng-model="startDate" md-placeholder="Enter date"
+                                                       md-min-date="minDate" md-max-date="maxDate" required></md-datepicker>
+
+                                    </div>
+                                    <div layout="row" class="datepicker-div" layout-margin>
+                                        <label>End date:</label>
+                                        <md-datepicker ng-model="endDate" md-placeholder="Enter date"
+                                                       md-min-date="minDate" md-max-date="maxDate" required></md-datepicker>
+                                    </div>
+                                    <md-input-container class="md-block">
+                                        <md-button type="submit" class="md-primary"
+                                                   ng-class="{'md-raised md-hue-1': (standaardForm.$dirty && standaardForm.$valid) }"
+                                                   aria-label="Save Project">Send</md-button>
+                                    </md-input-container>
+                                </form>
+                            </div>
+                        </md-content>
+                    </md-tab>
+                </md-tabs>
+            </md-content>
+            <md-sidenav md-component-id="right" class="md-sidenav-right" md-is-locked-open="$mdMedia('gt-md')"
+                        md-disable-backdrop >
+                <md-toolbar md-scroll-shrink ng-if="true">
+                    <div class="md-toolbar-tools">
+                        <h3>
+                            <span>Tasks</span>
+                        </h3>
+                    </div>
+                </md-toolbar>
+                <md-list>
+                    <md-list-item class="md-3-line" ng-repeat="task in tasks">
+                        <img ng-src="{% verbatim %}{{item.face}}{% endverbatim %}" alt="{% verbatim %}{{item.who}}{% endverbatim %}" class="md-avatar">
+                        <div class="md-list-item-text">
+                            <h3>{% verbatim %}{{task.name}}{% endverbatim %}</h3>
+                            <h4>{% verbatim %}{{task.params}}{% endverbatim %}</h4>
+                            <p>
+                                {% verbatim %}{{task.status}}{% endverbatim %}
+                            </p>
+                        </div>
+                        <md-divider inset></md-divider>
+                    </md-list-item>
+                </md-list>
+            </md-sidenav>
+        </section>
     </body>
+{% verbatim %}
+  {% endverbatim %}
 {% endblock %}
 {% block js %}
     <script src="{% static 'newsscraper/app.js' %}"></script>
+    <script src="{% static 'newsscraper/newsscraper.js' %}"></script>
 {% endblock %}

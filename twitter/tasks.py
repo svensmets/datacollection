@@ -70,6 +70,8 @@ def start_tweets_by_name_streaming(self, user_ids, user_id, nr_of_days, email):
     :param names: list of userids to follow
     """
     logger = logging.getLogger('twitter')
+    # the stream should continue on TypeError
+    continue_streaming = True
     task_id = self.request.id
     keys = get_twitter_keys_with_user_id(user_id)
     # use user-level authentication for streaming (otherwise 401 error)
@@ -80,7 +82,16 @@ def start_tweets_by_name_streaming(self, user_ids, user_id, nr_of_days, email):
                                                  'email': email})
     t.start()
     logger.debug("start streaming search")
-    my_stream.filter(follow=user_ids)
+    while continue_streaming:
+        try:
+            my_stream.filter(follow=user_ids)
+            # stop stream on disconnect
+            logger.debug("Stop the name stream on disconnect")
+            continue_streaming = False
+        except TypeError:
+            # continue the streamin on typeError
+            logger.debug("Type error in tweets by name streaming, continue")
+            pass
 
 
 @shared_task(bind=True)
@@ -107,23 +118,46 @@ def start_tweets_searchterms_streaming(self, searchterms, user_id, nr_of_days, e
     :param email: email address of the user, to send mail when csv file is ready
     """
     logger = logging.getLogger('twitter')
+    # the stream should continue on TypeError
+    continue_streaming = True
     task_id = self.request.id
     keys = get_twitter_keys_with_user_id(user_id)
     # use user-level authentication for streaming (otherwise 401 error)
     my_tweepy = TwitterTweepy(keys=keys, authentication='user_level')
     my_listener = TweetsStreamListener(my_tweepy.api, task_id=task_id)
     my_stream = tweepy.Stream(auth=my_tweepy.api.auth, listener=my_listener)
-    # start a thread with a timer to stop the streaming
-    # time_to_run = float(60 * 60 * 24 * nr_of_days)
-    # time_to_run = float(1 * 1 * 1 * nr_of_days)
-    # logger.debug("Streaming for {0} days (= {1} seconds".format(nr_of_days, time_to_run))
     # start the scheduling of the stop event
-    t = Timer(1.0, schedule_stop_stream, kwargs={'stream': my_stream, 'nr_of_days': nr_of_days, 'task_id' :task_id,
+    t = Timer(1.0, schedule_stop_stream, kwargs={'stream': my_stream, 'nr_of_days': nr_of_days, 'task_id': task_id,
                                                  'email': email})
     t.start()
     logger.debug("start streaming search")
-    my_stream.filter(track=searchterms)
+    while continue_streaming:
+        try:
+            my_stream.filter(track=searchterms)
+            # stop stream on disconnect
+            logger.debug("Seachterm stream disconnect")
+            continue_streaming = False
+        except TypeError:
+            # continue the streamin on typeError
+            logger.debug("Type error in searchterm streaming")
+            pass
     logger.debug("end of streaming")
+
+
+@shared_task(bind=True)
+def collect_random_tweets(self, user_id, email):
+    """
+    Collect random tweets from the search api
+    :param email: the email address of the user
+    """
+    logger = logging.getLogger('twitter')
+    logger.debug("Task: collect random tweets")
+    task_id = self.request.id
+    logger.debug("task id: {0}".format(task_id))
+    keys = get_twitter_keys_with_user_id(user_id)
+    my_tweepy = TwitterTweepy(keys)
+    my_tweepy.collect_random_tweets(task_id=task_id)
+    store_data(search_name="tweets", task_id=task_id, email=email)
 
 
 def schedule_stop_stream(stream, nr_of_days, task_id, email):

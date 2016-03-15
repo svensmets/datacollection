@@ -1,15 +1,13 @@
 from django import forms
-from djng.forms import NgModelFormMixin, NgForm
+from djng.forms import NgFormValidationMixin, NgForm
+from djng.styling.bootstrap3.forms import Bootstrap3FormMixin
+from functools import partial
 
-NEWS_SITE_CHOICES = (
-    ("standaard", "De Standaard"),
-    ("hln", "Het Laatste Nieuws"),
-    ("dm", "De Morgen"),
-)
+# add the angular datepicker to the date field
+DateInput = partial(forms.DateInput, {'jqdatepicker': '', 'min': 'minDate', 'max': 'maxDate'})
+SelectInput = partial(forms.Select, {'ng-change': 'changed()'})
 
-
-class NewssiteArchiveSearchForm(NgModelFormMixin, NgForm):
-    news_site = forms.MultipleChoiceField(label='News site', required=True, widget=forms.Select, choices=NEWS_SITE_CHOICES)
-    search_term = forms.CharField(label='Search term')
-    start_date = forms.DateField(label='Start date', widget=forms.DateInput)
-    end_date = forms.DateField(label='End Date', widget=forms.DateInput)
+class NewssiteArchiveSearchForm(NgFormValidationMixin, NgForm, Bootstrap3FormMixin):
+    search_term = forms.CharField(label='Search term', required=True)
+    start_date = forms.DateField(label='Start date', widget=DateInput())
+    end_date = forms.DateField(label='End Date', widget=DateInput())

@@ -25,6 +25,7 @@
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-profile-information">Search Profile Information &raquo;</a></p>
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-names">Search Tweets based on Names &raquo;</a></p>
                 <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-searchterms">Search Tweets based on Search Terms &raquo;</a></p>
+                <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-random">Collect random tweets &raquo;</a></p>
             </div>
         </div>
         <div class="row" id="messages-row">
@@ -176,6 +177,17 @@
                 </div>
             </form>
         </div>
+        <div class="row" id="random-tweets-row">
+            <!-- Options for collecting random tweets  (only visible on appropriate button click)-->
+            <h3>Collect random tweets</h3>
+            <form role="form" id="form-tweets-random">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <input type="submit" class="btn-large" id="bt-randomtweets-start" value="Start random search">
+                    </div>
+                </div>
+            </form>
+        </div>
         <!-- Show the tasks the user has started in the past -->
         <div class="row">
             <div class="col-md-12" id="tasks-row">
@@ -189,14 +201,13 @@
                     <div class="well" id="{{ task.task_id }}"><p><b>Name: </b>{{ task.name }} <b>date: </b>
                         {{ task.tstamp }} <b>state: </b>{{ task.state }}</p>
                         {% if task.state == 'SUCCESS' %}
-                            <form method="post" action="/get_task_data/">
+                            <form method="post" action="/twitter/get_task_data/">
                                 {% csrf_token %}
                                 <input type="hidden" name="id" value="{{ task.task_id }}">
                                 <input type="submit" class="btn-info" value="Download data">
                             </form>
-                        {% endif %}</div>
-
-
+                        {% endif %}
+                    </div>
                 {% endfor %}
             </div>
         </div>

@@ -12,6 +12,7 @@ from twitter.tasks import start_tweets_by_name_streaming
 from twitter.tasks import start_tweets_searchterms_streaming
 from twitter.tasks import start_tweets_searchterms_searchapi
 from twitter.tasks import start_tweets_names_searchapi
+from twitter.tasks import collect_random_tweets
 from twitter.util import get_twitter_keys, has_running_task, not_guest
 from tweepy import TweepError
 import logging
@@ -28,7 +29,7 @@ class HomescreenPage(TemplateView):
         user = request.user
         keys = get_twitter_keys(user)
         if keys is False:
-            return HttpResponseRedirect('/addkeys/')
+            return HttpResponseRedirect('/twitter/addkeys/')
         else:
             tasks = SearchTask.objects.get_tasks_of_user(user=user)
             add_names_form = NamesTextAreaForm
@@ -105,7 +106,7 @@ def lookupname(request):
         user = request.user
         keys = get_twitter_keys(user)
         if keys is False:
-            return HttpResponseRedirect('/addkeys/')
+            return HttpResponseRedirect('/twitter/addkeys/')
         else:
             name = request.GET.get('name', '')
             twitter = TwitterTweepy(keys)
@@ -149,7 +150,7 @@ def profile_information_search(request):
 
             keys = get_twitter_keys(user)
             if keys is False:
-                return HttpResponseRedirect('/addkeys/')
+                return HttpResponseRedirect('/twitter/addkeys/')
             else:
                 body_unicode = request.body.decode('utf-8')
                 body = json.loads(body_unicode)
@@ -172,7 +173,7 @@ def profile_information_search(request):
                     # bind task to user and store in db
                     search_task = SearchTask(user=request.user, task=status.task_id)
                     search_task.save()
-                    return HttpResponseRedirect('/homescreen/')
+                    return HttpResponseRedirect('/twitter/homescreen/')
                 else:
                     # user has tasks running and can't do any searches
                     return JsonResponse({'error': 'task running'})
@@ -193,7 +194,7 @@ def tweets_by_name_search(request):
             user = request.user
             keys = get_twitter_keys(user)
             if keys is False:
-                return HttpResponseRedirect('/addkeys/')
+                return HttpResponseRedirect('/twitter/addkeys/')
             else:
                 body_unicode = request.body.decode('utf-8')
                 body = json.loads(body_unicode)
@@ -230,7 +231,7 @@ def tweets_by_name_search(request):
                         # bind task to user and store in db
                         search_task = SearchTask(user=request.user, task=status.task_id)
                         search_task.save()
-                    return HttpResponseRedirect('/homescreen')
+                    return HttpResponseRedirect('/twitter/homescreen')
                 else:
                     # user has tasks running and can't do any searches
                     return JsonResponse({'error': 'task running'})
@@ -251,7 +252,7 @@ def tweets_by_searchterm_search(request):
             user = request.user
             keys = get_twitter_keys(user)
             if keys is False:
-                return HttpResponseRedirect('/addkeys/')
+                return HttpResponseRedirect('/twitter/addkeys/')
             else:
                 body_unicode = request.body.decode('utf-8')
                 body = json.loads(body_unicode)
@@ -279,10 +280,33 @@ def tweets_by_searchterm_search(request):
                         # bind task to user and store in db
                         search_task = SearchTask(user=request.user, task=status.task_id)
                         search_task.save()
-                    return HttpResponseRedirect('/homescreen')
+                    return HttpResponseRedirect('/twitter/homescreen')
                 else:
                     # user has tasks running and can't do any searches
                     return JsonResponse({'error': 'task running'})
+
+
+@not_guest
+def random_tweets_search(request):
+    """
+    Collect random tweets
+    :param request:
+    """
+    if request.method == 'POST':
+        logger = logging.getLogger(__name__)
+        logger.debug("View: get random tweets")
+        user = request.user
+        keys = get_twitter_keys(user)
+        if keys is False:
+            return HttpResponseRedirect('/twitter/addkeys/')
+        else:
+            if not has_running_task(user):
+                status = collect_random_tweets.delay(user_id=user.id, email=user.email)
+                search_task = SearchTask(user=user, task=status.task_id)
+                search_task.save()
+                return HttpResponseRedirect('/twitter/homescreen')
+            else:
+                return JsonResponse({'error': 'task running'})
 
 
 def get_task_data(request):
@@ -303,6 +327,6 @@ def get_task_data(request):
             return sendfile(request, task.csv_path, attachment=True, attachment_filename='data.zip')
         except SearchTask.DoesNotExist:
             logger.debug("Task not found in get_task_data in twitter view")
-        return HttpResponseRedirect('/homescreen')
+        return HttpResponseRedirect('/twitter/homescreen')
 
 

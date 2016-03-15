@@ -70,7 +70,7 @@ class TwitterTweepy:
         # get names from list, remove empty (otherwise error)
         names_list = names.split(',')
         self.logger.debug('friends {} followers {} max followers {} listmemberships {} listsubscriptions {}'
-              .format(friends, followers, max_followers, list_memberships, list_subscriptions))
+                          .format(friends, followers, max_followers, list_memberships, list_subscriptions))
         # list of ego_users as TwitterUser-objects
         list_ego_users = list()
         # list with all EGO-users and the friends and followers of this ego users
@@ -112,6 +112,8 @@ class TwitterTweepy:
                 # check first if name is not empty
                 if name:
                     self.logger.debug("Friend ids of {}".format(name))
+                    # get the ego user object to save the relationsship (not full ego network)
+                    ego_user = self._get_user(name, list_ego_users)
                     ids = list()
                     # get user ids of friends of user
                     while True:
@@ -125,6 +127,13 @@ class TwitterTweepy:
                             ids_no_doubles = list(id_set)
                             for page in self._paginate(ids_no_doubles, 100):
                                 self._save_users(page, task_id, list_total_users)
+                            # if full ego network is not collected, save the relationships between the ego user
+                            # and the friends
+                            if not relationships_checked:
+                                for friend_id in ids_no_doubles:
+                                    relation = TwitterRelationship(from_user_id=ego_user.user_id, to_user_id=friend_id,
+                                                                   relation_used="friends", task_id=task_id)
+                                    relation.save()
                         except tweepy.TweepError:
                             # when api cannot connect, reset connection
                             self.api = self.authenticate()
@@ -138,6 +147,8 @@ class TwitterTweepy:
                 # check first if name is not empty
                 if name:
                     self.logger.debug("Follower ids of {}".format(name))
+                    # get the ego user object to save the relationsship (not full ego network)
+                    ego_user = self._get_user(name, list_ego_users)
                     ids = list()
                     # get user ids of followers of user
                     while True:
@@ -150,6 +161,13 @@ class TwitterTweepy:
                             ids_no_doubles = list(id_set)
                             for page in self._paginate(ids_no_doubles, 100):
                                 self._save_users(page, task_id, list_total_users)
+                            # if full ego network is not collected, save the relationships between the ego user
+                            # and the friends
+                            if not relationships_checked:
+                                for friend_id in ids_no_doubles:
+                                    relation = TwitterRelationship(from_user_id=ego_user.user_id, to_user_id=friend_id,
+                                                                   relation_used="followers", task_id=task_id)
+                                    relation.save()
                         except tweepy.TweepError:
                             # reset connection when api cannot connect
                             self.api = self.authenticate()
@@ -340,6 +358,23 @@ class TwitterTweepy:
                 break
         self.logger.debug("Timeline search ended")
 
+    def collect_random_tweets(self, task_id):
+        """
+        Collect a number of random tweets from the search API
+        :param task_id: the task id needed to identify the tweets in the db
+        """
+        self.logger.debug("Random tweet search started")
+        query = "en OR of OR is OR het OR de"
+        while True:
+            try:
+                for status in tweepy.Cursor(self.api.search, q=query, lang='nl').items():
+                    self._save_tweet(status=status, task_id=task_id)
+            except tweepy.TweepError:
+                # reset connection
+                self.api = self.authenticate()
+            break
+        self.logger.debug("Random tweet search ended")
+
     def get_ids_from_screennames(self, screennames):
         """
         Returns the id of the screenname
@@ -434,13 +469,10 @@ class TwitterTweepy:
         # get mentions, urls & hashtags
         if hasattr(status, 'entities'):
             for hashtag in status.entities['hashtags']:
-                self.logger.debug(str(hashtag))
                 hashtags += hashtag['text'] + delimiter
             for mention in status.entities['user_mentions']:
-                self.logger.debug(str(mention))
                 mentions += mention['screen_name'] + delimiter
             for url in status.entities['urls']:
-                self.logger.debug(str(url))
                 urls += url['expanded_url'] + delimiter
 
         # avoid a Runtimewarning: convert naive to non naive datetime
