@@ -15,14 +15,14 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.contrib import admin
-from twitter.views import HomescreenPage, profile_information_search, tweets_by_name_search, tweets_by_searchterm_search
-from twitter.views import lookupname, get_tasks, AddTwitterKeys, get_task_data
-from user_profile.views import LoginPage, LogoutPage
 from overview.views import OverviewPage
+from user_profile.views import LoginPage, LogoutPage
 
 urlpatterns = [
     url(r'^$', OverviewPage.as_view(), name='overview'),
     url(r'^overview/$', OverviewPage.as_view(), name='overview page'),
+    url(r'^login/$', LoginPage.as_view(), name='login'),
+    url(r'^logout/$', LogoutPage.as_view(), name='logout'),
     url(r'^admin/', include(admin.site.urls)),
     url(r'^twitter/', include('twitter.urls')),
     url(r'^newsscraper/', include('newsscraper.urls')),
