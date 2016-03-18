@@ -124,6 +124,12 @@ LOGGING = {
             'filename': 'twitter.log',
             'formatter': 'verbose'
         },
+        'newsscraper': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'newsscraper.log',
+            'formatter': 'verbose'
+        }
     },
     'loggers': {
         'django': {
@@ -133,6 +139,11 @@ LOGGING = {
         },
         'twitter': {
             'handlers': ['twitter'],
+            'propagate': True,
+            'level': 'DEBUG',
+        },
+        'newsscraper': {
+            'handlers': ['newsscraper'],
             'propagate': True,
             'level': 'DEBUG',
         },

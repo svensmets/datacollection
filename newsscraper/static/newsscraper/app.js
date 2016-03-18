@@ -6,11 +6,35 @@
     var app = angular.module('newsscraper',['djng.forms','ngMaterial'])
         .config(function($httpProvider){
             $httpProvider.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+            $httpProvider.defaults.xsrfCookieName = 'csrftoken';
+            $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
     });
 
     app.controller('ArchiveSearchCtrl', function($scope, $http){
-        $scope.minDate = new Date('01/01/2005');
-        $scope.maxDate = new Date();
+        // http://stackoverflow.com/questions/25000896/angularjs-checkbox-not-working (17/03/2016)
+        $scope.archFormData = {
+            newspapers:[
+                {id:0, name:'De Standaard', enabled: false},
+                {id:1, name:'De Morgen', enabled: false},
+                {id:2, name:'HLN', enabled: false}
+            ]
+        };
+        $scope.submitArchiveForm = function(){
+            $http({
+                method: 'POST',
+                url: '/newsscraper/start_archive_search',
+                data: JSON.stringify($scope.archFormData),
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+            })
+                .success(function(data){
+                    if(!data.success){
+                        //TODO: errorcode
+                    }else{
+                        $scope.message = data.message;
+                    }
+                });
+        };
+
     });
 
     app.directive('jqdatepicker', function () {
