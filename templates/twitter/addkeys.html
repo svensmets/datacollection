@@ -14,7 +14,7 @@
                 {% if error_message %}
                     <h4>{{ error_message }}</h4>
                 {% endif %}
-                <form role="form" method="post" action="/addkeys/">
+                <form role="form" method="post" action="/twitter/addkeys/">
                     {% csrf_token %}
                     <div class="form-group">
                         {% bootstrap_form add_keys_form layout="inline" %}

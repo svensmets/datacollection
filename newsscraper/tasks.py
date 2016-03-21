@@ -1,5 +1,6 @@
 import logging
 from celery import shared_task
+from newsscraper.archive_scraper import standaard_scrape
 
 
 @shared_task(bind=True)
@@ -13,4 +14,5 @@ def standaard_archive_scrape(self, start_date, end_date):
     logger = logging.getLogger('newsscraper')
     task_id = self.request.id
     logger.debug("Task id: {0}".format(task_id))
+    standaard_scrape(task_id=task_id, start_date=start_date, end_date=end_date)
 

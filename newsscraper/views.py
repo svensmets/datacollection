@@ -1,9 +1,12 @@
 from django.contrib.auth.decorators import login_required
 import json
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from newsscraper.forms import NewssiteArchiveSearchForm
 import logging
+from newsscraper.models import ScrapeTask
+from newsscraper.tasks import standaard_archive_scrape
 
 
 class NewsScraperView(TemplateView):
@@ -22,6 +25,7 @@ class NewsScraperView(TemplateView):
 
 def start_archive_search(request):
     if request.method == 'POST':
+        user = request.user
         logger = logging.getLogger(__name__)
         logger.debug("View: start search")
         body_unicode = request.body.decode('utf-8')
@@ -32,3 +36,17 @@ def start_archive_search(request):
         newspapers = body['newspapers']
         start_date = body['startDate']
         end_date = body['endDate']
+        # iterate over checkbox values
+        for newspaper in newspapers:
+            if newspaper['name'] == 'De Standaard':
+                standaard = newspaper['enabled']
+            elif newspaper['name'] == 'De Morgen':
+                morgen = newspaper['enabled']
+            elif newspaper['name'] == 'HLN':
+                hln = newspaper['enabled']
+        if standaard:
+            # start standaard archive scrape
+            status = standaard_archive_scrape.delay(start_date=start_date, end_date=end_date)
+            scrape_task = ScrapeTask(user=user, task=status.task_id)
+            scrape_task.save()
+        return HttpResponse(json.dumps({'started': 'true'}), content_type='application/json')

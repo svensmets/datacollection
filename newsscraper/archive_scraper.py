@@ -1,4 +1,8 @@
-def standaard_scrape(self, task_id, start_date, end_date):
+import logging
+import time
+
+
+def standaard_scrape(task_id, start_date, end_date):
     """
     Scrapes the archive of the newspaper The Standaard
     http://www.standaard.be/zoeken?keyword=
@@ -7,3 +11,6 @@ def standaard_scrape(self, task_id, start_date, end_date):
     :param end_date: The end date of the search
     :return:
     """
+    logger = logging.getLogger('newsscraper')
+    time.sleep(5)
+    logger.debug("End of standaard scrape")
