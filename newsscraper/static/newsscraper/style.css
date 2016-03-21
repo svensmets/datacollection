@@ -121,3 +121,14 @@ form{
     margin: 100px 50px 50px 50px;
 }
 
+.datepicker-div{
+    margin-left: 50px;
+}
+
+md-sidenav,
+md-sidenav.md-locked-open,
+md-sidenav.md-closed.md-locked-open-add-active {
+    min-width: 200px !important;
+    width: 85vw !important;
+    max-width: 400px !important;
+}

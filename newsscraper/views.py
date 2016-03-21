@@ -3,10 +3,14 @@ import json
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
 from newsscraper.forms import NewssiteArchiveSearchForm
 import logging
 from newsscraper.models import ScrapeTask
+from newsscraper.serializers import ScrapeTaskSerializer
 from newsscraper.tasks import standaard_archive_scrape
+from djcelery.models import TaskState
 
 
 class NewsScraperView(TemplateView):
@@ -21,6 +25,22 @@ class NewsScraperView(TemplateView):
         context = super(NewsScraperView, self).get_context_data(**kwargs)
         context.update(form_archive_search=NewssiteArchiveSearchForm(form_name='search_archive_form'))
         return context
+
+
+@api_view(['GET'])
+def task_list(request):
+    """
+    List tasks of a user
+    :param request:
+    """
+    if request.method == 'GET':
+        user = request.user
+        tasks = ScrapeTask.objects.filter(user=user)
+        if tasks:
+            serializer = ScrapeTaskSerializer(tasks, many=True)
+            return Response(serializer.data)
+        else:
+            return Response()
 
 
 def start_archive_search(request):
@@ -47,6 +67,13 @@ def start_archive_search(request):
         if standaard:
             # start standaard archive scrape
             status = standaard_archive_scrape.delay(start_date=start_date, end_date=end_date)
-            scrape_task = ScrapeTask(user=user, task=status.task_id)
+            continue_loop = True
+            while continue_loop:
+                try:
+                    djcelery_task = TaskState.objects.get(task_id=status.task_id)
+                    continue_loop = False
+                except TaskState.DoesNotExist:
+                    pass
+            scrape_task = ScrapeTask(user=user, task=djcelery_task)
             scrape_task.save()
         return HttpResponse(json.dumps({'started': 'true'}), content_type='application/json')

@@ -9,6 +9,8 @@
 {% block css %}
     <link rel="stylesheet", type="text/css", href="{% static 'newsscraper/style.css' %}"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angular-material/1.0.6/angular-material.css">
+    <!-- link for material design icons http://google.github.io/material-design-icons/#icon-font-for-the-web -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 {% endblock %}
 {% block app_name %}
     Newsscraper
@@ -52,17 +54,6 @@
                                     <md-checkbox aria-label="newspaper.name" ng-model="newspaper.enabled">{% verbatim %}{{ newspaper.name }}{% endverbatim %}</md-checkbox>
                                 </div>
                             </md-input-container>
-                            <!--
-                            <md-input-container layout="column">
-                                <md-checkbox aria-label="De Standaard" ng-model="archFormData.cbStandaard">De Standaard</md-checkbox>
-                                <md-checkbox aria-label="De Morgen" ng-model="archFormData.cbMorgen">De Morgen</md-checkbox>
-                                <md-checkbox aria-label="Het Nieuwsblad" ng-model="archFormData.cbNieuwsblad">Het Nieuwsblad</md-checkbox>
-                                <md-checkbox aria-label="Het Laatste Nieuws" ng-model="archFormData.cbHln">Het Laatste Nieuws</md-checkbox>
-                                <md-checkbox aria-label="De Tijd" ng-model="archFormData.cbTijd">De Tijd</md-checkbox>
-                                <md-checkbox aria-label="GVA" ng-model="archFormData.cbGva">Gazet van Antwerpen</md-checkbox>
-                                <md-checkbox aria-label="Het Belang van Limburg" ng-model="archFormData.cbBelang">Belang van Limburg</md-checkbox>
-                            </md-input-container>
-                            -->
                             <!-- md-datepicker cannot be placed into md-input-container -->
                             <div layout="row" class="form-group">
                                 <div layout="column" class="datepicker-div">
@@ -95,14 +86,14 @@
                     </h3>
                 </div>
             </md-toolbar>
-            <md-list>
+            <md-list ng-controller="TaskController">
                 <md-list-item class="md-3-line" ng-repeat="task in tasks">
-                    <img ng-src="{% verbatim %}{{item.face}}{% endverbatim %}" alt="{% verbatim %}{{item.who}}{% endverbatim %}" class="md-avatar">
-                    <div class="md-list-item-text">
-                        <h3>{% verbatim %}{{task.name}}{% endverbatim %}</h3>
-                        <h4>{% verbatim %}{{task.params}}{% endverbatim %}</h4>
+                    <i class="material-icons md-48 md-avatar">title</i>
+                    <div class="md-list-item-text" layout="column">
+                        <h3>{% verbatim %}{{task.task.state}}{% endverbatim %}</h3>
+
                         <p>
-                            {% verbatim %}{{task.status}}{% endverbatim %}
+                            {% verbatim %}{{task.task.name}}{% endverbatim %}
                         </p>
                     </div>
                     <md-divider inset></md-divider>

@@ -10,7 +10,7 @@
             $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
     });
 
-    app.controller('ArchiveSearchCtrl', function($scope, $http){
+    app.controller('ArchiveSearchCtrl',['$scope', '$http', function($scope, $http){
         // http://stackoverflow.com/questions/25000896/angularjs-checkbox-not-working (17/03/2016)
         $scope.archFormData = {
             newspapers:[
@@ -33,9 +33,14 @@
                         $scope.message = data.message;
                     }
                 });
-        };
+        }
+    }]);
 
-    });
+    app.controller('TaskController', ['$scope', '$http', function($scope, $http){
+        $http.get('/newsscraper/tasks').success(function(data){
+            $scope.tasks = data;
+        });
+    }]);
 
     app.directive('jqdatepicker', function () {
         return {
