@@ -1,4 +1,5 @@
 import itertools
+from django.db import OperationalError
 import tweepy
 import pytz
 import logging
@@ -451,7 +452,6 @@ class TwitterTweepy:
         :param status: the tweet
         :param task_id: the id of the current task, used to identify the data in the database
         """
-        self.logger.debug("Tweet received: " + str(status.id))
         text_of_tweet = ""
         hashtags = ""
         urls = ""
@@ -488,7 +488,19 @@ class TwitterTweepy:
                       coordinates=status.coordinates, favorite_count=status.favorite_count, id_str=status.id_str,
                       in_reply_to_screen_name=status.in_reply_to_screen_name, retweet_count=status.retweet_count,
                       source=status.source, quoted_status_id=status_id)
-        tweet.save()
+        # retry if an operationalerror is thrown (deadlock)
+        retry = True
+        retry_times = 0
+        while retry:
+            try:
+                tweet.save()
+                retry = False
+            except OperationalError:
+                self.logger.debug("Operationalerror in save tweet: retry times = {}".format(retry_times))
+                retry_times += 1
+                if retry_times > 10:
+                    self.logger.debug("To many times OperationalError, quitting save tweet")
+                    retry = False
 
 
 class TweetsStreamListener(tweepy.StreamListener):
@@ -568,4 +580,16 @@ class TweetsStreamListener(tweepy.StreamListener):
                       coordinates=status.coordinates, favorite_count=status.favorite_count, id_str=status.id_str,
                       in_reply_to_screen_name=status.in_reply_to_screen_name, retweet_count=status.retweet_count,
                       source=status.source, quoted_status_id=status_id)
-        tweet.save()
+        # retry if an operationalerror is thrown (deadlock)
+        retry = True
+        retry_times = 0
+        while retry:
+            try:
+                tweet.save()
+                retry = False
+            except OperationalError:
+                self.logger.debug("Operationalerror in save tweet: retry times = {}".format(retry_times))
+                retry_times += 1
+                if retry_times > 10:
+                    self.logger.debug("To many times OperationalError, quitting save tweet")
+                    retry = False
