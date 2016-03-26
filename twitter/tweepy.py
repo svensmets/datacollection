@@ -1,5 +1,7 @@
 import itertools
+from datetime import timedelta, datetime
 from django.db import OperationalError
+import time
 import tweepy
 import pytz
 import logging
@@ -28,7 +30,8 @@ class TwitterTweepy:
         # using appauthhandler instead of oauthhandler, should give higher limits as stated in above link
         auth = tweepy.OAuthHandler(self.keys.consumer_key, self.keys.consumer_secret)
         auth.set_access_token(self.keys.access_token, self.keys.access_token_secret)
-        return tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+        return tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, retry_count=3, retry_delay=5,
+                          retry_errors=set([401, 404, 500, 503]))
 
     def user_exists(self, screen_name):
         """
@@ -119,9 +122,11 @@ class TwitterTweepy:
                     # get user ids of friends of user
                     while True:
                         try:
-                            for friend_id in tweepy.Cursor(self.api.friends_ids, screen_name=name).items():
+                            for friend_ids in tweepy.Cursor(self.api.friends_ids, screen_name=name).pages():
+                                time.sleep(1)
                                 # add ids to list of ids
-                                ids.append(friend_id)
+                                for friend_id in friend_ids:
+                                    ids.append(friend_id)
                             # get user objects from friend-ids and store in database
                             # remove doubles
                             id_set = set(ids)
@@ -135,11 +140,14 @@ class TwitterTweepy:
                                     relation = TwitterRelationship(from_user_id=ego_user.user_id, to_user_id=friend_id,
                                                                    relation_used="friends", task_id=task_id)
                                     relation.save()
-                        except tweepy.TweepError:
+                        except tweepy.TweepError as e:
                             # when api cannot connect, reset connection
+                            self.logger.debug("Error in getfriends: {0}".format(e))
+                            time.sleep(50)
                             self.api = self.authenticate()
-                        self.logger.debug("End of collect friends")
+                            continue
                         break
+            self.logger.debug("End of collect friends")
 
         # Collect followers of ego users
         if followers:
@@ -154,8 +162,10 @@ class TwitterTweepy:
                     # get user ids of followers of user
                     while True:
                         try:
-                            for follower_id in tweepy.Cursor(self.api.followers_ids, screen_name=name).items():
-                                ids.append(follower_id)
+                            for follower_ids in tweepy.Cursor(self.api.followers_ids, screen_name=name).pages():
+                                time.sleep(1)
+                                for follower_id in follower_ids:
+                                    ids.append(follower_id)
                             # get user objects from follower-ids and store in database
                             # remove doubles
                             id_set = set(ids)
@@ -170,10 +180,13 @@ class TwitterTweepy:
                                                                    relation_used="followers", task_id=task_id)
                                     relation.save()
                         except tweepy.TweepError:
+                            self.logger.debug("Error in get followers: {0}".format(e))
                             # reset connection when api cannot connect
+                            time.sleep(50)
                             self.api = self.authenticate()
-                        self.logger.debug("End of collect followers")
+                            continue
                         break
+            self.logger.debug("End of collect followers")
 
         if list_memberships:
             self.logger.debug("Collect list memberships")
@@ -183,18 +196,23 @@ class TwitterTweepy:
                     ego_user = self._get_user(name, list_ego_users)
                     while True:
                         try:
-                            for twitter_list in tweepy.Cursor(self.api.lists_memberships, screen_name=name).items():
+                            for twitter_lists in tweepy.Cursor(self.api.lists_memberships, screen_name=name).pages():
+                                time.sleep(1)
                                 # for a many to many relationship, the object has to be saved first,
                                 # then the relationship can be added
-                                twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
-                                                          list_full_name=twitter_list.full_name, task_id=task_id)
-                                twitterlist.save()
-                                twitterlist.user_membership.add(ego_user)
+                                for twitter_list in twitter_lists:
+                                    twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
+                                                            list_full_name=twitter_list.full_name, task_id=task_id)
+                                    twitterlist.save()
+                                    twitterlist.user_membership.add(ego_user)
                         except tweepy.TweepError:
+                            self.logger.debug("Error in list memberships")
                             # reset connection when api cannot connect
+                            time.sleep(50)
                             self.api = self.authenticate()
-                        self.logger.debug("End of collect list memberships")
+                            continue
                         break
+            self.logger.debug("End of collect list memberships")
 
         # Collect lists the ego user subscribes to
         if list_subscriptions:
@@ -205,14 +223,19 @@ class TwitterTweepy:
                     ego_user = self._get_user(name, list_ego_users)
                     while True:
                         try:
-                            for twitter_list in tweepy.Cursor(self.api.lists_subscriptions, screen_name=name).items():
-                                twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
-                                                          list_full_name=twitter_list.full_name, task_id=task_id)
-                                twitterlist.save()
-                                twitterlist.user_subscription.add(ego_user)
-                        except tweepy.TweepError:
+                            for twitter_lists in tweepy.Cursor(self.api.lists_subscriptions, screen_name=name).pages():
+                                time.sleep(1)
+                                for twitter_list in twitter_lists:
+                                    twitterlist = TwitterList(list_id=twitter_list.id, list_name=twitter_list.name,
+                                                              list_full_name=twitter_list.full_name, task_id=task_id)
+                                    twitterlist.save()
+                                    twitterlist.user_subscription.add(ego_user)
+                        except tweepy.TweepError as e:
                             # reset connection when api cannot connect
+                            self.logger.debug("Tweeperror in list subscriptions: {}".format(e))
+                            time.sleep(50)
                             self.api = self.authenticate()
+                            continue
                         self.logger.debug("End of collect list subscriptions")
                         break
 
@@ -237,12 +260,15 @@ class TwitterTweepy:
                     # collect all friends ids of the user
                     while True:
                         try:
-                            for user_id in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).items():
-                                list_ids.append(user_id)
-                        except tweepy.TweepError:
+                            for user_ids in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).pages():
+                                for user_id in user_ids:
+                                    list_ids.append(user_id)
+                        except tweepy.TweepError as e:
                             # reset connection
-                            self.logger.debug("Tweeperror: resetting connection")
+                            self.logger.debug("Tweeperror: resetting connection {}".format(e))
                             self.api = self.authenticate()
+                            time.sleep(50)
+                            continue
                         break
                     # remove duplicates
                     set_ids = set(list_ids)
@@ -261,11 +287,14 @@ class TwitterTweepy:
                     # collect all follower ids of the user
                     while True:
                         try:
-                            for user_id in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).items():
-                                list_ids.append(user_id)
-                        except tweepy.TweepError:
-                            # reset connection
+                            for user_ids in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).pages():
+                                for user_id in user_ids:
+                                    list_ids.append(user_id)
+                        except tweepy.TweepError as e:
+                            self.logger.debug("Tweeperror in relations: {}".format(e))
                             self.api = self.authenticate()
+                            time.sleep(50)
+                            continue
                         break
                     # remove duplicates
                     set_ids = set(list_ids)
@@ -293,6 +322,10 @@ class TwitterTweepy:
         query_params = filter(None, query_params)
         query_strings = list()
         query_operator = " OR "
+        # get date of today for until parameter
+        today = time.strftime("%Y-%m-%d")
+        date_today = datetime.strptime(today, "%Y-%m-%d").date()
+        since = date_today - timedelta(days=7)
         # if more than 10 params, multiple queries will be necessary
         for params in self._paginate(query_params, 10):
             # join max 10 parameters with the OR operator and add quotes
@@ -300,14 +333,24 @@ class TwitterTweepy:
         # lookup the tweets in chunks of 10 params
         for query_string in query_strings:
             self.logger.debug("Get tweets based on query string: {0}".format(query_string))
+            until = date_today + timedelta(days=1)
             while True:
                 try:
-                    for status in tweepy.Cursor(self.api.search, q=query_string).items():
-                        self._save_tweet(status=status, task_id=task_id)
-                except tweepy.TweepError:
-                    # reset connection
-                    self.api = self.authenticate()
-                break
+                    for statuses in tweepy.Cursor(self.api.search, q=query_string, since=since, until=until, count=100,
+                                                include_entities=True).pages():
+                        for status in statuses:
+                            try:
+                                self._save_tweet(status=status, task_id=task_id)
+                            except:
+                                self.logger.debug("Exception in save tweet")
+                                continue
+                            time.sleep(0.3)
+                    break
+                except tweepy.TweepError as e:
+                    self.logger.debug("Error in searchterms {0}".format(e))
+                    time.sleep(50)
+                    self.authenticate()
+                    continue
             self.logger.debug("No more tweets for {0}".format(query_string))
         self.logger.debug("End of search")
 
@@ -331,12 +374,20 @@ class TwitterTweepy:
             self.logger.debug(query_string)
             while True:
                 try:
-                    for status in tweepy.Cursor(self.api.search, q=query_string).items():
-                        self._save_tweet(status=status, task_id=task_id)
-                except tweepy.TweepError:
-                    # reset connection
-                    self.api = self.authenticate()
-                break
+                    for statuses in tweepy.Cursor(self.api.search, q=query_string,  count=100,
+                                                include_entities=True).pages():
+                        for status in statuses:
+                            try:
+                                self._save_tweet(status=status, task_id=task_id)
+                            except:
+                                self.logger.debug("Error in save tweet names searchapi")
+                                pass
+                            time.sleep(0.3)
+                except tweepy.TweepError as e:
+                    self.logger.debug("Error in cursor save tweet names searchapi: {}".format(e))
+                    time.sleep(50)
+                    self.authenticate()
+                    continue
             self.logger.debug("No more tweets for {0}".format(query_string))
         self.logger.debug("End of search")
 
@@ -351,12 +402,18 @@ class TwitterTweepy:
             self.logger.debug("Timeline search of {0}".format(name))
             while True:
                 try:
-                    for status in tweepy.Cursor(self.api.user_timeline, screen_name=name).items():
-                        self._save_tweet(status=status, task_id=task_id)
-                except tweepy.TweepError:
-                    # reset connection
-                    self.api = self.authenticate()
-                break
+                    for statuses in tweepy.Cursor(self.api.user_timeline, screen_name=name).pages():
+                        for status in statuses:
+                            try:
+                                self._save_tweet(status=status, task_id=task_id)
+                            except:
+                                pass
+                            time.sleep(0.3)
+                except tweepy.TweepError as e:
+                    self.logger.debug("Error in cursor in timeline: {}".format(e))
+                    time.sleep(50)
+                    self.authenticate()
+                    continue
         self.logger.debug("Timeline search ended")
 
     def collect_random_tweets(self, task_id):
@@ -368,12 +425,13 @@ class TwitterTweepy:
         query = "en OR of OR is OR het OR de"
         while True:
             try:
-                for status in tweepy.Cursor(self.api.search, q=query, lang='nl').items():
-                    self._save_tweet(status=status, task_id=task_id)
-            except tweepy.TweepError:
-                # reset connection
-                self.api = self.authenticate()
-            break
+                for statuses in tweepy.Cursor(self.api.search, q=query, lang='nl').pages():
+                    for status in statuses:
+                        self._save_tweet(status=status, task_id=task_id)
+            except tweepy.TweepError as e:
+                self.logger.debug("Error in random tweets: {}".format(e))
+                self.authenticate()
+                continue
         self.logger.debug("Random tweet search ended")
 
     def get_ids_from_screennames(self, screennames):
@@ -501,6 +559,9 @@ class TwitterTweepy:
                 if retry_times > 10:
                     self.logger.debug("To many times OperationalError, quitting save tweet")
                     retry = False
+            except UnicodeEncodeError:
+                self.logger.debug("Unicode error in save tweet")
+                retry = False
 
 
 class TweetsStreamListener(tweepy.StreamListener):
@@ -542,7 +603,6 @@ class TweetsStreamListener(tweepy.StreamListener):
         return False
 
     def _save_tweet(self, status, task_id):
-        self.logger.debug("Tweet received: " + str(status.id))
         text_of_tweet = ""
         hashtags = ""
         urls = ""
@@ -593,3 +653,5 @@ class TweetsStreamListener(tweepy.StreamListener):
                 if retry_times > 10:
                     self.logger.debug("To many times OperationalError, quitting save tweet")
                     retry = False
+            except UnicodeEncodeError:
+                retry = False

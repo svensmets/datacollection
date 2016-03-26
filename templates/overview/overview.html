@@ -9,6 +9,11 @@
     <div class="jumbotron">
         <div class="container">
             <h3>Choose an app</h3>
+            <!-- for superuser, extra settings are available -->
+            {% if request.user.is_superuser %}
+                <h2>Admin settings</h2>
+                <p><a class="btn btn-default" href={% url "admin:index" %} role="button" id="btn-admin-settings">admin settings &raquo;</a></p>
+            {% endif %}
             <p><a class="btn btn-default" href="/twitter/" role="button" id="btn-to-twitter-app">Twitter &raquo;</a></p>
             <p><a class="btn btn-default" href="/newsscraper/" role="button" id="btn-to-newscraper-app">Newspaper scraping &raquo;</a></p>
             <p><a class="btn btn-default" href="" role="button" id="btn-to-facebook-app">Facebook &raquo;</a></p>

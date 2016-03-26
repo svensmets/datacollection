@@ -1,6 +1,7 @@
 import logging
 import time
-
+import requests
+from bs4 import BeautifulSoup
 
 def standaard_scrape(task_id, start_date, end_date):
     """
@@ -11,6 +12,7 @@ def standaard_scrape(task_id, start_date, end_date):
     :param end_date: The end date of the search
     :return:
     """
+    standaard_url = "http://www.standaard.be/zoeken?keyword="
     logger = logging.getLogger('newsscraper')
-    time.sleep(5)
+    r = requests.get(standaard_url)
     logger.debug("End of standaard scrape")

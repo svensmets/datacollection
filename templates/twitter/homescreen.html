@@ -16,16 +16,11 @@
         <div class="row">
             <!-- show possible search tasks the user can do -->
             <div class="col-md-4">
-                <!-- for superuser, extra settings are available -->
-                {% if request.user.is_superuser %}
-                    <h2>Admin settings</h2>
-                    <p><a class="btn btn-default" href={% url "admin:index" %} role="button" id="btn-admin-settings">admin settings &raquo;</a></p>
-                {% endif %}
                 <h2>Search tasks</h2>
-                <p><a class="btn btn-default" href="#" role="button" id="btn-search-profile-information">Search Profile Information &raquo;</a></p>
-                <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-names">Search Tweets based on Names &raquo;</a></p>
-                <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-searchterms">Search Tweets based on Search Terms &raquo;</a></p>
-                <p><a class="btn btn-default" href="#" role="button" id="btn-search-tweets-random">Collect random tweets &raquo;</a></p>
+                <p><a class="btn btn-default btn-block" href="#" role="button" id="btn-search-profile-information">Search Profile Information &raquo;</a></p>
+                <p><a class="btn btn-default btn-block" href="#" role="button" id="btn-search-tweets-names">Search Tweets based on Names &raquo;</a></p>
+                <p><a class="btn btn-default btn-block" href="#" role="button" id="btn-search-tweets-searchterms">Search Tweets based on Search Terms &raquo;</a></p>
+                <p><a class="btn btn-default btn-block" href="#" role="button" id="btn-search-tweets-random">Collect random tweets &raquo;</a></p>
             </div>
         </div>
         <div class="row" id="messages-row">

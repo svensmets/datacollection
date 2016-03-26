@@ -89,8 +89,8 @@ def start_tweets_by_name_streaming(self, user_ids, user_id, nr_of_days, email):
             # stop stream on disconnect
             logger.debug("Stop the name stream on disconnect")
             continue_streaming = False
-        except (TypeError, ReadTimeoutError):
-            # continue the streamin on typeError
+        except (TypeError, ReadTimeoutError, AttributeError):
+            # continue the streaming on typeError
             logger.debug("Type error in tweets by name streaming, continue")
             pass
 
@@ -138,7 +138,7 @@ def start_tweets_searchterms_streaming(self, searchterms, user_id, nr_of_days, e
             # stop stream on disconnect
             logger.debug("Seachterm stream disconnect")
             continue_streaming = False
-        except (TypeError, ReadTimeoutError):
+        except (TypeError, ReadTimeoutError, AttributeError):
             # continue the streamin on typeError
             logger.debug("Type error in searchterm streaming")
             pass

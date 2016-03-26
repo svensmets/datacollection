@@ -54,6 +54,7 @@ INSTALLED_APPS = (
     'djcelery',
     'sendfile',
     'djng',
+    'rest_framework',
 )
 
 MIDDLEWARE_CLASSES = (
