@@ -334,7 +334,7 @@ class TwitterTweepy:
             query_strings.append(query_operator.join('"{0}"'.format(param) for param in params))
         # lookup the tweets in chunks of 10 params
         for query_string in query_strings:
-
+            '''
             self.logger.debug("Get tweets based on query string: {0}".format(query_string))
             until = date_today + timedelta(days=1)
             while True:
@@ -392,7 +392,7 @@ class TwitterTweepy:
                     print("some error : " + str(e))
                     time.sleep(100)
                     continue
-            '''
+
         self.logger.debug("End of search")
 
     def get_tweets_names_searchapi(self, query_params, task_id):
