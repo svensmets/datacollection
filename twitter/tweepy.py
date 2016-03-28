@@ -319,6 +319,8 @@ class TwitterTweepy:
 
         # split the query into 10 keywords per query, they will will be connected with the OR operator
         # remove empty strings from parameters
+        maxTweets = 10000000 # Some arbitrary large number
+        tweets_per_query = 100  # this is the max the API permits
         query_params = filter(None, query_params)
         query_strings = list()
         query_operator = " OR "
@@ -332,6 +334,8 @@ class TwitterTweepy:
             query_strings.append(query_operator.join('"{0}"'.format(param) for param in params))
         # lookup the tweets in chunks of 10 params
         for query_string in query_strings:
+            '''
+            # memory leak in cursor
             self.logger.debug("Get tweets based on query string: {0}".format(query_string))
             until = date_today + timedelta(days=1)
             while True:
@@ -352,6 +356,43 @@ class TwitterTweepy:
                     self.authenticate()
                     continue
             self.logger.debug("No more tweets for {0}".format(query_string))
+            '''
+            since_id = None
+            # If results only below a specific ID are, set max_id to that ID.
+            # else default to no upper limit, start from the most recent tweet matching the search query.
+            max_id = -1
+            tweet_count = 0
+            while tweet_count < maxTweets:
+                try:
+                    if max_id <= 0:
+                        if not since_id:
+                            new_tweets = self.api.search(q=query_string, count=tweets_per_query)
+                        else:
+                            new_tweets = self.api.search(q=query_string, count=tweets_per_query, since_id=since_id)
+                    else:
+                        if not since_id:
+                            new_tweets = self.api.search(q=query_string, count=tweets_per_query, max_id=str(max_id - 1))
+                        else:
+                            new_tweets = self.api.search(q=query_string, count=tweets_per_query,max_id=str(max_id - 1)
+                                                         ,since_id=since_id)
+                    if not new_tweets:
+                        print("No more tweets found")
+                        break
+                    for tweet in new_tweets:
+                        try:
+                            self._save_tweet(status=tweet, task_id=task_id)
+                        except:
+                            self.logger.debug("Exception in save tweet")
+                            continue
+                    tweet_count += len(new_tweets)
+                    print("Downloaded {0} tweets".format(tweet_count))
+                    max_id = new_tweets[-1].id
+                    time.sleep(1)
+                except tweepy.TweepError as e:
+                    # Just exit if any error
+                    print("some error : " + str(e))
+                    time.sleep(100)
+                    continue
         self.logger.debug("End of search")
 
     def get_tweets_names_searchapi(self, query_params, task_id):
