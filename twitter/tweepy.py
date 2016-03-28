@@ -347,7 +347,7 @@ class TwitterTweepy:
                             except:
                                 self.logger.debug("Exception in save tweet")
                                 continue
-                            time.sleep(0.3)
+                        time.sleep(0.3)
                     break
                 except tweepy.TweepError as e:
                     self.logger.debug("Error in searchterms {0}".format(e))
@@ -603,7 +603,7 @@ class TwitterTweepy:
             except UnicodeEncodeError:
                 self.logger.debug("Unicode error in save tweet")
                 retry = False
-
+        del tweet
 
 class TweetsStreamListener(tweepy.StreamListener):
     """
