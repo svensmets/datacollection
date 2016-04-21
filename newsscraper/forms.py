@@ -7,6 +7,7 @@ from functools import partial
 DateInput = partial(forms.DateInput, {'jqdatepicker': '', 'min': 'minDate', 'max': 'maxDate'})
 SelectInput = partial(forms.Select, {'ng-change': 'changed()'})
 
+
 class NewssiteArchiveSearchForm(NgFormValidationMixin, NgForm, Bootstrap3FormMixin):
     search_term = forms.CharField(label='Search term', required=True)
     start_date = forms.DateField(label='Start date', widget=DateInput())

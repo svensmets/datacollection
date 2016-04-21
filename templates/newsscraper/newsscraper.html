@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angular-material/1.0.6/angular-material.css">
     <!-- link for material design icons http://google.github.io/material-design-icons/#icon-font-for-the-web -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
 {% endblock %}
 {% block app_name %}
     Newsscraper
@@ -91,11 +92,15 @@
                     <i class="material-icons md-48 md-avatar">title</i>
                     <div class="md-list-item-text" layout="column">
                         <h3>{% verbatim %}{{task.task.state}}{% endverbatim %}</h3>
-
                         <p>
                             {% verbatim %}{{task.task.name}}{% endverbatim %}
                         </p>
                     </div>
+                    <!-- Note: in the string comparison for ng-show, single quotes must be around the compared strings, within double quotes -->
+                    <md-button class="md-fab md-mini" ng-show="'{% verbatim %}{{task.task.state}}{% endverbatim %}'=='SUCCESS'"
+                               ng-click="getTaskData(task.task.task_id)">
+                        <i class="material-icons">get_app</i>
+                    </md-button>
                     <md-divider inset></md-divider>
                 </md-list-item>
             </md-list>

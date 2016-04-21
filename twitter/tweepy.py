@@ -319,8 +319,7 @@ class TwitterTweepy:
 
         # split the query into 10 keywords per query, they will will be connected with the OR operator
         # remove empty strings from parameters
-        maxTweets = 10000000 # Some arbitrary large number
-        tweets_per_query = 100  # this is the max the API permits
+
         query_params = filter(None, query_params)
         query_strings = list()
         query_operator = " OR "
@@ -356,6 +355,8 @@ class TwitterTweepy:
                     continue
             self.logger.debug("No more tweets for {0}".format(query_string))
             '''
+            maxTweets = 10000000 # Some arbitrary large number
+            tweets_per_query = 100  # this is the max the API permits
             since_id = None
             # If results only below a specific ID are, set max_id to that ID.
             # else default to no upper limit, start from the most recent tweet matching the search query.
