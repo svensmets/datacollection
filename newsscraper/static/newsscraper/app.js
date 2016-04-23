@@ -27,9 +27,9 @@
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             })
                 .then(function succesCallback(data){
-                    alert("succes");
+                    //TODO
                 }), function errorCallback(data){
-                    alert("error");
+                    //TODO
             };
         };
     }]);
