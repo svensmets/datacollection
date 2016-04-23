@@ -20,7 +20,7 @@ def init_driver_firefox():
     firefox_profile.set_preference("webdriver.load.strategy", "unstable")
     driver = webdriver.Firefox(firefox_profile=firefox_profile)
     driver.wait = WebDriverWait(driver, 20)
-    driver.set_page_load_timeout(10)
+    driver.set_page_load_timeout(30)
     return driver
 
 

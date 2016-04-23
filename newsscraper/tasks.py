@@ -2,7 +2,6 @@ import logging
 from celery import shared_task
 from newsscraper.archive_scraper import standaard_scrape, init_driver_firefox, hln_scrape
 from newsscraper.util import store_data
-from pyvirtualdisplay import Display
 
 @shared_task(bind=True)
 def standaard_archive_scrape(self, search_word, start_date, end_date, email):
@@ -16,9 +15,6 @@ def standaard_archive_scrape(self, search_word, start_date, end_date, email):
     logger = logging.getLogger('newsscraper')
     task_id = self.request.id
     logger.debug("Task id: {0}".format(task_id))
-    # open display to avoid WebdriverException() (see notes)
-    display = Display(visible=0, size=(1024,768))
-    display.start()
     # initalize driver here to close it on exit
     driver = init_driver_firefox()
     # start scrape
@@ -35,7 +31,6 @@ def standaard_archive_scrape(self, search_word, start_date, end_date, email):
     finally:
         try:
             driver.quit()
-            display.stop()
         except Exception as e:
             logger.debug("Problem closing driver or display: {0}".format(e))
 
@@ -53,9 +48,6 @@ def hln_archive_scrape(self, search_word, start_date, end_date, email):
     logger = logging.getLogger('newsscraper')
     task_id = self.request.id
     logger.debug("Task id: {0}".format(task_id))
-    # open display to avoid WebdriverException() (see notes)
-    display = Display(visible=0, size=(1024,768))
-    display.start()
     # initalize driver here to close it on exit
     driver = init_driver_firefox()
     # start scrape
@@ -67,6 +59,5 @@ def hln_archive_scrape(self, search_word, start_date, end_date, email):
     finally:
         try:
             driver.quit()
-            display.stop()
         except Exception as e:
             logger.debug("Problem closing driver or display: {0}".format(e))
