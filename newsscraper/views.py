@@ -67,8 +67,6 @@ def start_archive_search(request):
                 morgen = newspaper['enabled']
             elif newspaper['name'] == 'HLN':
                 hln = newspaper['enabled']
-        print("start date: " + start_date)
-        print("end date: " + end_date)
 
         if standaard:
             # start standaard archive scrape

@@ -21,6 +21,7 @@ def init_driver_firefox():
     driver = webdriver.Firefox(firefox_profile=firefox_profile)
     driver.wait = WebDriverWait(driver, 20)
     driver.set_page_load_timeout(30)
+    driver.set_script_timeout(10)
     return driver
 
 
@@ -59,7 +60,8 @@ def standaard_scrape(task_id, search_word, driver, start_date, end_date):
         logger.debug("total url: " + total_url)
         try:
             driver.get(total_url)
-        except TimeoutException:
+        except TimeoutException as e:
+            logger.debug("Exception in driver.get: {0}".format(e))
             pass
         '''
         try:
@@ -88,7 +90,7 @@ def standaard_scrape(task_id, search_word, driver, start_date, end_date):
                         driver.get(article_url)
                     except TimeoutException as e:
                         logger.debug(e)
-                        continue
+                        pass
                     time.sleep(2)
                     soup_art = BeautifulSoup(driver.page_source, "html.parser")
                     # paying articles has title meta in header without a class

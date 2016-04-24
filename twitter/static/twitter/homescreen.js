@@ -28,7 +28,7 @@ $(document).ready(function () {
     $("#btn-search-tweets-random").click(function(){
         $("#profile-information-row").fadeOut();
         $("#tweets-by-name-row").fadeOut();
-        $("#tweets-by-searchterm-row").fadeOut()
+        $("#tweets-by-searchterm-row").fadeOut();
         $("#random-tweets-row").fadeIn();
     });
     //profile information search: if relationship checkbox is checked: friends and followers must be checked
@@ -186,7 +186,7 @@ $(document).ready(function () {
                 names: names, followers: followersChecked, friends: friendChecked,
                 listmemberships: listMembershipsChecked, listsubscriptions: listSubscriptionsChecked,
                 maxfollowers: maxFollowers, relationshipschecked: relationshipsChecked
-            }
+            };
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
             $.post("/twitter/profile-information-search/", JSON.stringify(data), function(data){
@@ -267,7 +267,7 @@ $(document).ready(function () {
                 getSearchApiTweets: getSearchAPITweets,
                 getStreamingTweets: getStreamingTweets,
                 nrOfDays: nrOfDays
-            }
+            };
             //http://api.jquery.com/jquery.post/
             //post the from with ajax
             $.post("/twitter/tweets_by_name_search/", JSON.stringify(data), function(data){

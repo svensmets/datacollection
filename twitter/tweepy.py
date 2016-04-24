@@ -9,6 +9,7 @@ from twitter.models import TwitterUser, TwitterList, TwitterRelationship
 from twitter.models import Tweet
 
 
+
 class TwitterTweepy:
     """
     Access to twitter API with Tweepy library
