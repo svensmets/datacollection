@@ -335,14 +335,18 @@ def hln_scrape(task_id, search_word, driver, start_date, end_date):
                                     tweet.text = p.get_text()
                                     # hashtags are actually inside <a>, store separately
                                     for hashtag_link in p.find_all("a", class_="PrettyLink hashtag customisable"):
+                                        tweet.hashtags = ""
                                         hashtag = ""
                                         for span in hashtag_link.find_all("span"):
-                                            hashtag += span.get_text()
+                                            if span.get_text():
+                                                hashtag += span.get_text()
                                         tweet.hashtags += hashtag + ","
                                 for a in blockquote.find_all("a", class_="u-linkBlend u-url customisable-highlight long-permalink"):
                                     tweet.date = a["data-datetime"]
                                 for a in blockquote.find_all("a", class_="PrettyLink link media customisable"):
-                                    tweet.links += a.get_text() + ','
+                                    tweet.links = ""
+                                    if a.get_text():
+                                        tweet.links += a.get_text() + ','
                             logger.debug(tweet)
                             tweets_list.append(tweet)
                             # return to default content for next iteration, otherwise error is thrown
