@@ -25,6 +25,11 @@ def init_driver_firefox():
     return driver
 
 
+def init_driver_chrome():
+    driver = webdriver.Chrome()
+    return driver
+
+
 def standaard_scrape(task_id, search_word, driver, start_date, end_date):
     """
     Scrapes the archive of the newspaper The Standaard

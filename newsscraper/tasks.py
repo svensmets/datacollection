@@ -1,6 +1,6 @@
 import logging
 from celery import shared_task
-from newsscraper.archive_scraper import standaard_scrape, init_driver_firefox, hln_scrape
+from newsscraper.archive_scraper import standaard_scrape, init_driver_firefox, hln_scrape, init_driver_chrome
 from newsscraper.util import store_data
 from pyvirtualdisplay import Display
 
@@ -21,7 +21,8 @@ def standaard_archive_scrape(self, search_word, start_date, end_date, email):
     display = Display(visible=0)
     display.start()
     # initalize driver here to close it on exit
-    driver = init_driver_firefox()
+    # driver = init_driver_firefox()
+    driver = init_driver_chrome()
     # start scrape
     try:
         standaard_scrape(task_id=task_id, search_word=search_word, driver=driver, start_date=start_date, end_date=end_date)
@@ -60,7 +61,8 @@ def hln_archive_scrape(self, search_word, start_date, end_date, email):
     display = Display(visible=0)
     display.start()
     # initalize driver here to close it on exit
-    driver = init_driver_firefox()
+    # driver = init_driver_firefox()
+    driver = init_driver_chrome()
     # start scrape
     try:
         hln_scrape(task_id=task_id, search_word=search_word, driver=driver, start_date=start_date, end_date=end_date)
