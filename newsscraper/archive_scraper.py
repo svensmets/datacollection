@@ -420,7 +420,18 @@ def hln_scrape(task_id, search_word, driver, start_date, end_date):
                         except NoSuchElementException:
                             logger.debug("No more comments")
                             new_comments_exist = False
+                        # save information
+                        article_to_save.save()
+                        for tweet in tweets_list:
+                            tweet.article = article_to_save
+                            tweet.save()
+                        for comment in comments_list:
+                            comment.article = article_to_save
+                            tweet.save()
+
+
                         time.sleep(1)
+
 
                     logger.debug(article_to_save)
                     time.sleep(1)
