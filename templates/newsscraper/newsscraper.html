@@ -40,8 +40,11 @@
                 </div>
             </md-toolbar>
             <div ng-controller="ArchiveSearchCtrl" >
-                <form name="standaardForm" data-ng-submit="submitArchiveForm()">
+                <form name="archiveSearchForm" data-ng-submit="submitArchiveForm()">
                     {% csrf_token %}
+                    <div ng-messages="">
+
+                    </div>
                     <div layout="column">
                         <h3 class="md-display-1"><span>Archive search</span></h3>
                         <div id="message" ng-show="message">{% verbatim %}{{ message }}{% endverbatim %}</div>

@@ -37,8 +37,21 @@ def store_data(news_site, task_id, email):
             try:
                 send_mail('data ready', 'Twitter datacollection search is finished', 'datacoll3ction@gmail.com', [email],
                           fail_silently=False)
-            except:
-                logger.debug("Mail could not be sent")
+            except Exception as e:
+                logger.debug("Mail could not be sent".format(e))
+    elif news_site == "morgen":
+        # write the data to a file
+        __write_morgen_scrape_data(task_id)
+        # compress the directory for later sending
+        __zip_and_save_directory(task_id)
+        # send mail when task is finished if email address is provided
+        if email:
+            try:
+                send_mail('data ready', 'Twitter datacollection search is finished', 'datacoll3ction@gmail.com',
+                          [email],
+                          fail_silently=False)
+            except Exception as e:
+                logger.debug("Mail could not be sent: {0}".format(e))
 
 
 def __write_standaard_scrape_data(task_id):
@@ -67,6 +80,20 @@ def __write_hln_scrape_data(task_id):
             "LEFT JOIN newsscraper_comment cm ON art.id = cm.article_id " \
             "WHERE art.task_id LIKE '{}'".format(task_id)
     __write_cursor_to_csv(query, csv_file)
+
+
+def __write_morgen_scrape_data(task_id):
+    csv_file = __create_csv_file("morgen", task_id=task_id)
+    query = "SELECT art.id as article_id, art.newspaper as newspaper_name, art.title as article_title, " \
+            "art.hyperlink as article_link, art.date as article_date, art.author as article_author, " \
+            "art.source as article_source, art.facebook_shares as article_facebook_shares, " \
+            "art.free_article as article_free, art.pin_it as article_pin_it, tw.twitter_link as twitter_link, " \
+            "tw.author as twitter_author, tw.lang as twitter_language, tw.date as twitter_date, " \
+            "tw.links as twitter_links, tw.hashtags as twitter_hashtags, tw.text as tweet_text " \
+            "FROM newsscraper_article art LEFT JOIN newsscraper_embeddedtweet tw ON art.id = tw.article_id " \
+            "WHERE art.task_id LIKE '{}'".format(task_id)
+    __write_cursor_to_csv(query, csv_file)
+    pass
 
 
 def __write_cursor_to_csv(query, csv_file):
@@ -111,8 +138,8 @@ def __create_csv_file(name, task_id):
         search_task = ScrapeTask.objects.get(task__task_id=task_id)
         search_task.data_path = data_dir
         search_task.save()
-    except ScrapeTask.DoesNotExist:
-        logger.debug("Problem with saving path of csv file")
+    except ScrapeTask.DoesNotExist as e:
+        logger.debug("Problem with saving path of csv file: {0}".format(e))
     return csv_file
 
 
@@ -124,8 +151,8 @@ def __zip_and_save_directory(task_id):
         zip_path = __zip_directory(path=path, task_id=task_id)
         search_task.data_path = zip_path
         search_task.save()
-    except ScrapeTask.DoesNotExist:
-        logger.debug("zip and save directory: task does not exist")
+    except ScrapeTask.DoesNotExist as e:
+        logger.debug("zip and save directory: task does not exist: {0}".format(e))
 
 
 def __zip_directory(path, task_id):

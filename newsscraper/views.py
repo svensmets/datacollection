@@ -10,7 +10,7 @@ from newsscraper.forms import NewssiteArchiveSearchForm
 import logging
 from newsscraper.models import ScrapeTask
 from newsscraper.serializers import ScrapeTaskSerializer
-from newsscraper.tasks import standaard_archive_scrape, hln_archive_scrape
+from newsscraper.tasks import standaard_archive_scrape, hln_archive_scrape, morgen_archive_scrape
 from djcelery.models import TaskState
 import dateutil.parser
 
@@ -70,12 +70,12 @@ def start_archive_search(request):
 
         if standaard:
             # start standaard archive scrape
-            status = standaard_archive_scrape.delay(search_word=search_word, start_date=start_date, end_date=end_date,
+            status_standaard = standaard_archive_scrape.delay(search_word=search_word, start_date=start_date, end_date=end_date,
                                                     email=user.email)
             continue_loop = True
             while continue_loop:
                 try:
-                    djcelery_task = TaskState.objects.get(task_id=status.task_id)
+                    djcelery_task = TaskState.objects.get(task_id=status_standaard.task_id)
                     continue_loop = False
                 except TaskState.DoesNotExist:
                     pass
@@ -83,18 +83,34 @@ def start_archive_search(request):
             scrape_task.save()
         if hln:
             # start hln archive scrape
-            status = hln_archive_scrape.delay(search_word=search_word, start_date=start_date, end_date=end_date,
+            status_hln = hln_archive_scrape.delay(search_word=search_word, start_date=start_date, end_date=end_date,
                                               email=user.email)
             continue_loop = True
             while continue_loop:
                 try:
-                    djcelery_task = TaskState.objects.get(task_id=status.task_id)
+                    djcelery_task = TaskState.objects.get(task_id=status_hln.task_id)
                     continue_loop = False
                 except TaskState.DoesNotExist:
                     pass
             scrape_task = ScrapeTask(user=user, task=djcelery_task)
             scrape_task.save()
-
+        if morgen:
+            # date format must be changed for de morgen
+            format = "%d-%m-%Y"
+            start_date = dateutil.parser.parse(body['startDate']).strftime(format)
+            end_date = dateutil.parser.parse(body['endDate']).strftime(format)
+            # start morgen scrape
+            status_morgen = morgen_archive_scrape.delay(search_word=search_word, start_date=start_date, end_date=end_date,
+                                                  email=user.email)
+            continue_loop = True
+            while continue_loop:
+                try:
+                    djcelery_task = TaskState.objects.get(task_id=status_morgen.task_id)
+                    continue_loop = False
+                except TaskState.DoesNotExist:
+                    pass
+            scrape_task = ScrapeTask(user=user, task=djcelery_task)
+            scrape_task.save()
         return HttpResponse(json.dumps({'started': 'true'}), content_type='application/json')
 
 
