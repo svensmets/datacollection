@@ -14,6 +14,10 @@ from newsscraper.models import Article, EmbeddedTweet, Comment
 
 
 def init_driver_firefox():
+    """
+    Firefox gives problems in production, no longer used
+    :return: firefoxdriver
+    """
     firefox_profile = webdriver.FirefoxProfile()
     firefox_profile.set_preference("http.response.timeout", 10)
     firefox_profile.set_preference("dom.max_script_run_time", 10)
@@ -26,9 +30,14 @@ def init_driver_firefox():
 
 
 def init_driver_chrome():
+    """
+    Chrome driver gives less problems in production
+    :return: chromedriver
+    """
     driver = webdriver.Chrome()
     driver.set_page_load_timeout(10)
     driver.set_script_timeout(10)
+    driver.wait = WebDriverWait(driver, 20)
     return driver
 
 
