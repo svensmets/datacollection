@@ -79,164 +79,171 @@ def standaard_scrape(task_id, search_word, driver, start_date, end_date):
         except TimeoutException as e:
             logger.debug("Exception in driver.get: {0}".format(e))
             pass
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        articles = soup.find_all("article")
-        # retry the loop while the &pages=<number> gives back results
-        results = False
-        for article in articles:
-            time.sleep(1)
-            # all links in articles on the page
-            for a in article.findAll("a"):
-                article_url = a.get("href")
-                # if the link contains 'cnt', it's a link to an complete article
-                if 'cnt' in article_url:
-                    results = True
-                    # open the page of the article and fetch information
-                    article_to_save = Article()
-                    article_to_save.task_id = task_id
-                    article_to_save.newspaper = "Standaard"
-                    article_to_save.hyperlink = article_url
-                    try:
-                        driver.get(article_url)
-                    except TimeoutException as e:
-                        logger.debug(e)
-                        pass
-                    time.sleep(2)
-                    soup_art = BeautifulSoup(driver.page_source, "html.parser")
-                    # paying articles has title meta in header without a class
-                    headers = soup_art.find_all("header")
-                    for header in headers:
-                        # the title of the paying article is in a h1 with class of article__header
-                        for h1 in header.find_all("h1", class_="article__header"):
-                            # only paying articles have this
-                            article_to_save.free_article = False
-                            title_text = re.sub(r"\s+", " ", h1.get_text())
-                            article_to_save.title = title_text
-                        for small in header.find_all("small", class_="article__content-info"):
-                            # date of paying article in time tag
-                            for t in small.find_all("time"):
-                                article_time = re.sub(r"\s+", " ", t.get_text())
-                                article_to_save.date = article_time
-                            # author is sometimes in an element within the small
-                            author = None
-                            for a in small.find_all("a"):
-                                author = a.get_text()
-                            # sometimes the author is the text of the small
-                            if not author:
-                                text_small = small.get_text()
-                                if text_small:
-                                    # this text has to be cleaned still
-                                    author = text_small[text_small.find("|")+1:].strip()
-                            article_to_save.author = author
-                            # free articles have title meta in header with class article__meta
-                    headers_title = soup_art.find_all("header", class_='article__header')
-                    for header_title in headers_title:
-                        for h1 in header_title.find_all("h1", {"itemprop":"name"}):
-                            article_to_save.title = h1.get_text()
-
-                    date_author_source_data = soup_art.find_all("footer", class_='article__meta')
-                    for footer in date_author_source_data:
-                        article_to_save.free_article = True
-                        for t in footer.find_all("time"):
-                            article_to_save.date = t.get_text()
-                        for a in footer.find_all("span", {'itemprop':'author'}):
-                            article_to_save.author = a.get_text()
-                        for s in footer.find_all("span", {'itemprop': 'sourceOrganization'}):
-                            source_text = re.sub(r"\s+", " ", s.get_text())
-                            source_text = source_text.strip('\n\r\t')
-                            article_to_save.source = source_text
-                    # Facebook likes with selenium can be found on site
-                    for div in soup_art.find_all("div", class_="social  social--large"):
+        try:
+            # section put in try except because of possible TimeoutException
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            articles = soup.find_all("article")
+            # retry the loop while the &pages=<number> gives back results
+            results = False
+            for article in articles:
+                time.sleep(1)
+                # all links in articles on the page
+                for a in article.findAll("a"):
+                    article_url = a.get("href")
+                    # if the link contains 'cnt', it's a link to an complete article
+                    if 'cnt' in article_url:
+                        results = True
+                        # open the page of the article and fetch information
+                        article_to_save = Article()
+                        article_to_save.task_id = task_id
+                        article_to_save.newspaper = "Standaard"
+                        article_to_save.hyperlink = article_url
                         try:
-                            if div["data-social"] == "googleplus":
-                                article_to_save.googleplus_shares = div["data-shares"]
-                            if div["data-social"] == "twitter":
-                                article_to_save.twitter_shares = div["data-shares"]
-                            if div["data-social"] == "facebook":
-                                article_to_save.facebook_shares = div["data-shares"]
-                        except KeyError as e:
-                            logger.debug("KeyError: {0}".format(e))
-
-                    # embedded tweets
-                    iframes_twitter = driver.find_elements_by_class_name("twitter-tweet-rendered")
-                    tweets_list = list()
-                    for iframe in iframes_twitter:
-                        try:
-                            driver.switch_to_frame(iframe)
-                            frame_soup = BeautifulSoup(driver.page_source, "html.parser")
-                            tweet_blockquotes = frame_soup.find_all("blockquote", class_="Tweet")
-
-                            for tweet_blockquote in tweet_blockquotes:
-                                tweet = EmbeddedTweet()
-                                for p in tweet_blockquote.find_all("p"):
-                                    # lang may give keyerror, catch it
-                                    try:
-                                        tweet.lang = p['lang']
-                                    except KeyError as e:
-                                        logger.debug("Keyerror in p['lang']: {0}".format(e))
-                                    tweet.text = p.get_text()
-                                    # save links and hashtags
-                                    hashtags = ""
-                                    links = ""
-                                    for a_link in p.find_all("a"):
-                                        if "src=hash" in a_link["href"]:
-                                            # hashtag if it contains "src=hash"
-                                            hashtags += a_link.get_text() + ","
-                                        else:
-                                            # it's a link
-                                            links += a_link.get_text() + ","
-                                    tweet.hashtags = hashtags.strip(",")
-                                    tweet.links = links.strip(",")
-                                for a_link in tweet_blockquote.find_all("a"):
-                                    # fetch only the tweet status links
-                                    try:
-                                        if "/status/" in a_link["href"]:
-                                            tweet.twitter_link = a_link["href"]
-                                    except KeyError as e:
-                                        logger.debug("KeyError: {0}".format(e))
-
-                                # the tweeter name and date are in the blockquote text
-                                # note: split on long stripe
-                                tweeter_name_and_date = tweet_blockquote.get_text().split(u'\u2014')[-1]
-                                tweet.author = tweeter_name_and_date[tweeter_name_and_date.find("(")+1:tweeter_name_and_date.find(")")]
-                                tweet.date = tweeter_name_and_date[tweeter_name_and_date.find(")")+1:].strip()
-                                tweets_list.append(tweet)
-                            driver.switch_to_default_content()
-                        except (NoSuchFrameException, StaleElementReferenceException) as e:
+                            driver.get(article_url)
+                        except TimeoutException as e:
                             logger.debug(e)
+                            pass
+                        time.sleep(2)
+                        try:
+                            # section put into try except because of possible TimeoutException
+                            soup_art = BeautifulSoup(driver.page_source, "html.parser")
+                            # paying articles has title meta in header without a class
+                            headers = soup_art.find_all("header")
+                            for header in headers:
+                                # the title of the paying article is in a h1 with class of article__header
+                                for h1 in header.find_all("h1", class_="article__header"):
+                                    # only paying articles have this
+                                    article_to_save.free_article = False
+                                    title_text = re.sub(r"\s+", " ", h1.get_text())
+                                    article_to_save.title = title_text
+                                for small in header.find_all("small", class_="article__content-info"):
+                                    # date of paying article in time tag
+                                    for t in small.find_all("time"):
+                                        article_time = re.sub(r"\s+", " ", t.get_text())
+                                        article_to_save.date = article_time
+                                    # author is sometimes in an element within the small
+                                    author = None
+                                    for a in small.find_all("a"):
+                                        author = a.get_text()
+                                    # sometimes the author is the text of the small
+                                    if not author:
+                                        text_small = small.get_text()
+                                        if text_small:
+                                            # this text has to be cleaned still
+                                            author = text_small[text_small.find("|") + 1:].strip()
+                                    article_to_save.author = author
+                                    # free articles have title meta in header with class article__meta
+                            headers_title = soup_art.find_all("header", class_='article__header')
+                            for header_title in headers_title:
+                                for h1 in header_title.find_all("h1", {"itemprop": "name"}):
+                                    article_to_save.title = h1.get_text()
+
+                            date_author_source_data = soup_art.find_all("footer", class_='article__meta')
+                            for footer in date_author_source_data:
+                                article_to_save.free_article = True
+                                for t in footer.find_all("time"):
+                                    article_to_save.date = t.get_text()
+                                for a in footer.find_all("span", {'itemprop': 'author'}):
+                                    article_to_save.author = a.get_text()
+                                for s in footer.find_all("span", {'itemprop': 'sourceOrganization'}):
+                                    source_text = re.sub(r"\s+", " ", s.get_text())
+                                    source_text = source_text.strip('\n\r\t')
+                                    article_to_save.source = source_text
+                            # Facebook likes with selenium can be found on site
+                            for div in soup_art.find_all("div", class_="social  social--large"):
+                                try:
+                                    if div["data-social"] == "googleplus":
+                                        article_to_save.googleplus_shares = div["data-shares"]
+                                    if div["data-social"] == "twitter":
+                                        article_to_save.twitter_shares = div["data-shares"]
+                                    if div["data-social"] == "facebook":
+                                        article_to_save.facebook_shares = div["data-shares"]
+                                except KeyError as e:
+                                    logger.debug("KeyError: {0}".format(e))
+
+                            # embedded tweets
+                            try:
+                                iframes_twitter = driver.find_elements_by_class_name("twitter-tweet-rendered")
+                                tweets_list = list()
+                                for iframe in iframes_twitter:
+                                    try:
+                                        driver.switch_to_frame(iframe)
+                                        frame_soup = BeautifulSoup(driver.page_source, "html.parser")
+                                        tweet_blockquotes = frame_soup.find_all("blockquote", class_="Tweet")
+
+                                        for tweet_blockquote in tweet_blockquotes:
+                                            tweet = EmbeddedTweet()
+                                            for p in tweet_blockquote.find_all("p"):
+                                                # lang may give keyerror, catch it
+                                                try:
+                                                    tweet.lang = p['lang']
+                                                except KeyError as e:
+                                                    logger.debug("Keyerror in p['lang']: {0}".format(e))
+                                                tweet.text = p.get_text()
+                                                # save links and hashtags
+                                                hashtags = ""
+                                                links = ""
+                                                for a_link in p.find_all("a"):
+                                                    if "src=hash" in a_link["href"]:
+                                                        # hashtag if it contains "src=hash"
+                                                        hashtags += a_link.get_text() + ","
+                                                    else:
+                                                        # it's a link
+                                                        links += a_link.get_text() + ","
+                                                tweet.hashtags = hashtags.strip(",")
+                                                tweet.links = links.strip(",")
+                                            for a_link in tweet_blockquote.find_all("a"):
+                                                # fetch only the tweet status links
+                                                try:
+                                                    if "/status/" in a_link["href"]:
+                                                        tweet.twitter_link = a_link["href"]
+                                                except KeyError as e:
+                                                    logger.debug("KeyError: {0}".format(e))
+
+                                            # the tweeter name and date are in the blockquote text
+                                            # note: split on long stripe
+                                            tweeter_name_and_date = tweet_blockquote.get_text().split(u'\u2014')[-1]
+                                            tweet.author = tweeter_name_and_date[
+                                                           tweeter_name_and_date.find("(") + 1:tweeter_name_and_date.find(
+                                                               ")")]
+                                            tweet.date = tweeter_name_and_date[tweeter_name_and_date.find(")") + 1:].strip()
+                                            tweets_list.append(tweet)
+                                        driver.switch_to_default_content()
+                                    except (NoSuchFrameException, StaleElementReferenceException) as e:
+                                        logger.debug(e)
+                            except TimeoutException as e:
+                                logger.debug("TimeOutException: {0}".format(e))
                             # pin its are in figures with class pin-container
-                    for figure in soup_art.find_all("figure", class_="pin-container"):
-                        for img in figure.find_all("img"):
-                            try:
-                                # link of the pin it image is in src tag
-                                article_to_save.pin_it = img["src"]
-                            except:
-                                pass
-                    #link to video
-                    for div in soup_art.find_all("div", {"id":"VIDSW_title-ds"}):
-                        for a in div.find_all("a"):
-                            try:
-                                article_to_save.video += a["href"] + ","
-                            except KeyError as e:
-                                logger.debug("Keyerror: {0}".format(e))
+                            for figure in soup_art.find_all("figure", class_="pin-container"):
+                                for img in figure.find_all("img"):
+                                    try:
+                                        # link of the pin it image is in src tag
+                                        article_to_save.pin_it = img["src"]
+                                    except:
+                                        pass
+                            # link to video
+                            for div in soup_art.find_all("div", {"id": "VIDSW_title-ds"}):
+                                for a in div.find_all("a"):
+                                    try:
+                                        article_to_save.video += a["href"] + ","
+                                    except KeyError as e:
+                                        logger.debug("Keyerror: {0}".format(e))
+                            # save data
+                            article_to_save.save()
+                            for tweet in tweets_list:
+                                tweet.article = article_to_save
+                                tweet.save()
+                        except TimeoutException as e:
+                            logger.debug(e)
 
-                    # sometimes a link to a tweet is embedded in a button on a video
-                    # NOTE: a button inside an iframe is very tricky
-                    '''
-                    for twitter_button_link in soup_art.find_all("div", {"class":"twitter-button-container"}):
-                        tweet = EmbeddedTweet()
-                        logger.debug(twitter_button_link["href"])
-                        tweet.twitter_link = twitter_button_link["href"]
-                    '''
-                    article_to_save.save()
-                    for tweet in tweets_list:
-                        tweet.article = article_to_save
-                        tweet.save()
 
-        logger.debug("end of loop")
-        result_page += 1
-        if not results:
-            retry_loop = False
+            logger.debug("end of loop")
+            result_page += 1
+            if not results:
+                retry_loop = False
+        except TimeoutException as e:
+            logger.debug(e)
+
 
 
 def hln_scrape(task_id, search_word, driver, start_date, end_date):
@@ -283,158 +290,130 @@ def hln_scrape(task_id, search_word, driver, start_date, end_date):
         except TimeoutException:
             pass
         time.sleep(3)
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        # all article links are in the div searchResultBox
-        for search_results in soup.find_all("div", {"id": "searchResultBox"}):
-            # iterate over articles
-            for link in search_results.find_all("a"):
-                # exclude the search.dhtml links
-                if "search.dhtml?" not in link["href"]:
-                    # results are found, continue the loop
-                    retry_loop = True
-                    article_url = "http://www.hln.be" + link["href"]
-                    logger.debug("* link = " + article_url)
-                    # open the article with the link and download the data
-                    try:
-                        driver.get(article_url)
-                    except TimeoutException:
-                        logger.debug("timeoutexception")
-                        pass
-                    time.sleep(3)
-                    art_soup = BeautifulSoup(driver.page_source, "html.parser")
-
-                    # Start new article
-                    article_to_save = Article()
-                    article_to_save.task_id = task_id
-                    article_to_save.newspaper = "hln"
-                    article_to_save.hyperlink = article_url
-
-                    # find facebook shares with facebook graph, span with number doesn't show up
-                    facebook_url = "http://graph.facebook.com/?id="
-                    total_url = facebook_url + article_url
-                    request_facebook_graph = requests.get(total_url)
-                    facebook_soup = BeautifulSoup(request_facebook_graph.content, "html.parser")
-                    facebook_data = json.loads(str(facebook_soup))
-                    try:
-                        article_to_save.facebook_shares = str(facebook_data['shares'])
-                    except:
-                        pass
-
-                    # instagram pictures are inside iframes, driver must switch to the iframe to fetch them
-                    iframes = driver.find_elements_by_class_name("embedly-card")
-                    instagram_links = ""
-                    for iframe in iframes:
+        try:
+            # code inside try catch because of possible timeoutexception
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            # all article links are in the div searchResultBox
+            for search_results in soup.find_all("div", {"id": "searchResultBox"}):
+                # iterate over articles
+                for link in search_results.find_all("a"):
+                    # exclude the search.dhtml links
+                    if "search.dhtml?" not in link["href"]:
+                        # results are found, continue the loop
+                        retry_loop = True
+                        article_url = "http://www.hln.be" + link["href"]
+                        logger.debug("* link = " + article_url)
+                        # open the article with the link and download the data
                         try:
-                            driver.switch_to_frame(iframe)
-                            frame_soup = BeautifulSoup(driver.page_source, "html.parser")
-                            for a in frame_soup.find_all("a"):
-                                # multiple links are returned, take only those that are instagram pics
-                                try:
-                                    if "www.instagram.com/p/" in a["href"]:
-                                        instagram_links += a["href"] + ","
-                                except KeyError as e:
-                                    logger.debug("KeyError: {0}".format(e))
-                            # driver must switch back to default content, otherwise error
-                            driver.switch_to.default_content()
-                        except (NoSuchFrameException, StaleElementReferenceException):
+                            driver.get(article_url)
+                        except TimeoutException as e:
+                            logger.debug("timeoutexception: {0}".format(e))
                             pass
-                    article_to_save.instagram_links = instagram_links
-
-                    # embedded tweets are into iframes, driver must switch to the iframe
-                    iframes_twitter = driver.find_elements_by_class_name("twitter-tweet")
-                    tweets_list = list()
-                    for iframe in iframes_twitter:
+                        time.sleep(3)
                         try:
-                            tweet = EmbeddedTweet()
-                            driver.switch_to_frame(iframe)
-                            frame_soup = BeautifulSoup(driver.page_source, "html.parser")
-                            for blockquote in frame_soup.find_all("blockquote"):
+                            pass
+                        except TimeoutException as e:
+                            logger.debug("TimeoutException: {0}".format(e))
+                        # Start new article
+                        article_to_save = Article()
+                        article_to_save.task_id = task_id
+                        article_to_save.newspaper = "hln"
+                        article_to_save.hyperlink = article_url
+
+                        # find facebook shares with facebook graph, span with number doesn't show up
+                        facebook_url = "http://graph.facebook.com/?id="
+                        total_url = facebook_url + article_url
+                        request_facebook_graph = requests.get(total_url)
+                        facebook_soup = BeautifulSoup(request_facebook_graph.content, "html.parser")
+                        facebook_data = json.loads(str(facebook_soup))
+                        try:
+                            article_to_save.facebook_shares = str(facebook_data['shares'])
+                        except:
+                            pass
+
+                        # instagram pictures are inside iframes, driver must switch to the iframe to fetch them
+                        try:
+                            iframes = driver.find_elements_by_class_name("embedly-card")
+                            instagram_links = ""
+                            for iframe in iframes:
                                 try:
-                                    tweet.twitter_link = blockquote['cite']
-                                except KeyError as e:
-                                    logger.debug("Keyerror: ".format(e))
-                                for a in blockquote.find_all("a", class_="TweetAuthor-link Identity u-linkBlend"):
-                                    try:
-                                        tweet.author = a['aria-label']
-                                    except KeyError as e:
-                                        logger.debug("Keyerror: ".format(e))
-                                for p in blockquote.find_all("p"):
-                                    # the text contains all text with hashtags
-                                    tweet.text = p.get_text()
-                                    # hashtags are actually inside <a>, store separately
-                                    for hashtag_link in p.find_all("a", class_="PrettyLink hashtag customisable"):
-                                        tweet.hashtags = ""
-                                        hashtag = ""
-                                        for span in hashtag_link.find_all("span"):
-                                            if span.get_text():
-                                                hashtag += span.get_text()
-                                        tweet.hashtags += hashtag + ","
-                                for a in blockquote.find_all("a", class_="u-linkBlend u-url customisable-highlight long-permalink"):
-                                    try:
-                                        tweet.date = a["data-datetime"]
-                                    except KeyError as e:
-                                        logger.debug("Keyerror: {0}".format(e))
-                                for a in blockquote.find_all("a", class_="PrettyLink link media customisable"):
-                                    tweet.links = ""
-                                    if a.get_text():
-                                        tweet.links += a.get_text() + ','
-                            tweets_list.append(tweet)
-                            # return to default content for next iteration, otherwise error is thrown
-                            driver.switch_to_default_content()
-                        except (NoSuchFrameException, StaleElementReferenceException) as e:
-                            logger.debug(e)
+                                    driver.switch_to_frame(iframe)
+                                    frame_soup = BeautifulSoup(driver.page_source, "html.parser")
+                                    for a in frame_soup.find_all("a"):
+                                        # multiple links are returned, take only those that are instagram pics
+                                        try:
+                                            if "www.instagram.com/p/" in a["href"]:
+                                                instagram_links += a["href"] + ","
+                                        except KeyError as e:
+                                            logger.debug("KeyError: {0}".format(e))
+                                    # driver must switch back to default content, otherwise error
+                                    driver.switch_to.default_content()
+                                except (NoSuchFrameException, StaleElementReferenceException):
+                                    pass
+                            article_to_save.instagram_links = instagram_links
+                        except TimeoutException as e:
+                            logger.debug("TimeoutException: {0}".format(e))
 
-                    # fetch comments
-                    comments_list = list()
-                    total_comments_url = article_url + comments_url
-                    try:
-                        driver.get(total_comments_url)
-                    except TimeoutException:
-                        logger.debug("timeoutexception")
-                        pass
-                    comments_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    # get the comments of the first page
-                    for section in comments_soup.find_all("section", {"id":"reaction"}):
-                        for li in section.find_all("li"):
-                            comment_to_save = Comment()
-                            for cite in li.find("cite"):
-                                # sometimes cite is only name, sometimes name with
-                                comment_to_save.author = re.sub('\s+', ' ', cite).strip()
-                            for blockquote in li.find("blockquote"):
-                                comment_to_save.text = blockquote.strip()
-                            for time_comment in li.find("span"):
-                                comment_to_save.date = time_comment.strip()
-                            comments_list.append(comment_to_save)
-                            logger.debug(comment_to_save)
-
-                    # comments are in multiple pages with link "volgende"
-                    # now fetching comments of the next pages
-                    # find the link with xpath and click it with selenium
-                    new_comments_exist = True
-                    first_iteration = True
-                    while new_comments_exist:
-                        # if a cookie banner exists, click on the button continue, otherwise an error is thrown
+                        # embedded tweets are into iframes, driver must switch to the iframe
                         try:
-                            button = driver.find_element_by_class_name('fjs-cookie-banner-button')
-                            button.click()
-                        except (NoSuchElementException, ElementNotVisibleException):
-                            logger.debug("no banner")
+                            iframes_twitter = driver.find_elements_by_class_name("twitter-tweet")
+                            tweets_list = list()
+                            for iframe in iframes_twitter:
+                                try:
+                                    tweet = EmbeddedTweet()
+                                    driver.switch_to_frame(iframe)
+                                    frame_soup = BeautifulSoup(driver.page_source, "html.parser")
+                                    for blockquote in frame_soup.find_all("blockquote"):
+                                        try:
+                                            tweet.twitter_link = blockquote['cite']
+                                        except KeyError as e:
+                                            logger.debug("Keyerror: ".format(e))
+                                        for a in blockquote.find_all("a", class_="TweetAuthor-link Identity u-linkBlend"):
+                                            try:
+                                                tweet.author = a['aria-label']
+                                            except KeyError as e:
+                                                logger.debug("Keyerror: ".format(e))
+                                        for p in blockquote.find_all("p"):
+                                            # the text contains all text with hashtags
+                                            tweet.text = p.get_text()
+                                            # hashtags are actually inside <a>, store separately
+                                            for hashtag_link in p.find_all("a", class_="PrettyLink hashtag customisable"):
+                                                tweet.hashtags = ""
+                                                hashtag = ""
+                                                for span in hashtag_link.find_all("span"):
+                                                    if span.get_text():
+                                                        hashtag += span.get_text()
+                                                tweet.hashtags += hashtag + ","
+                                        for a in blockquote.find_all("a",
+                                                                     class_="u-linkBlend u-url customisable-highlight long-permalink"):
+                                            try:
+                                                tweet.date = a["data-datetime"]
+                                            except KeyError as e:
+                                                logger.debug("Keyerror: {0}".format(e))
+                                        for a in blockquote.find_all("a", class_="PrettyLink link media customisable"):
+                                            tweet.links = ""
+                                            if a.get_text():
+                                                tweet.links += a.get_text() + ','
+                                    tweets_list.append(tweet)
+                                    # return to default content for next iteration, otherwise error is thrown
+                                    driver.switch_to_default_content()
+                                except (NoSuchFrameException, StaleElementReferenceException) as e:
+                                    logger.debug(e)
+                        except TimeoutException as e:
+                            logger.debug("TimeoutException: {0}".format(e))
+
+                        # fetch comments
+                        comments_list = list()
+                        total_comments_url = article_url + comments_url
+                        try:
+                            driver.get(total_comments_url)
+                        except TimeoutException as e:
+                            logger.debug("timeoutexception: {0}".format(e))
                             pass
                         try:
-                            # first time xpath is //*[@id="reaction"]/div[1]/a
-                            # second time xpath is //*[@id="reaction"]/div[1]/a[2]
-                            if first_iteration:
-                                link = driver.find_element_by_xpath('//*[@id="reaction"]/div[1]/a')
-                                driver.wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="reaction"]/div[1]/a')))
-                                first_iteration = False
-                            else:
-                                link = driver.find_element_by_xpath('//*[@id="reaction"]/div[1]/a[2]')
-                                driver.wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="reaction"]/div[1]/a[2]')))
-
-                            link.click()
-                            time.sleep(2)
-                            comments_followup_soup = BeautifulSoup(driver.page_source, "html.parser")
-                            for section in comments_followup_soup.find_all("section", {"id":"reaction"}):
+                            comments_soup = BeautifulSoup(driver.page_source, "html.parser")
+                            # get the comments of the first page
+                            for section in comments_soup.find_all("section", {"id": "reaction"}):
                                 for li in section.find_all("li"):
                                     comment_to_save = Comment()
                                     for cite in li.find("cite"):
@@ -446,20 +425,67 @@ def hln_scrape(task_id, search_word, driver, start_date, end_date):
                                         comment_to_save.date = time_comment.strip()
                                     comments_list.append(comment_to_save)
                                     logger.debug(comment_to_save)
-                        except NoSuchElementException:
-                            logger.debug("No more comments")
-                            new_comments_exist = False
-                        time.sleep(1)
 
-                    logger.debug(article_to_save)
-                    article_to_save.save()
-                    for comment in comments_list:
-                        comment.article = article_to_save
-                        comment.save()
-                    for tweet_to_save in tweets_list:
-                        tweet_to_save.article = article_to_save
-                        tweet_to_save.save()
-                    time.sleep(1)
+                            # comments are in multiple pages with link "volgende"
+                            # now fetching comments of the next pages
+                            # find the link with xpath and click it with selenium
+                            new_comments_exist = True
+                            first_iteration = True
+                            while new_comments_exist:
+                                # if a cookie banner exists, click on the button continue, otherwise an error is thrown
+                                try:
+                                    button = driver.find_element_by_class_name('fjs-cookie-banner-button')
+                                    button.click()
+                                except (NoSuchElementException, ElementNotVisibleException):
+                                    logger.debug("no banner")
+                                    pass
+                                try:
+                                    # first time xpath is //*[@id="reaction"]/div[1]/a
+                                    # second time xpath is //*[@id="reaction"]/div[1]/a[2]
+                                    if first_iteration:
+                                        link = driver.find_element_by_xpath('//*[@id="reaction"]/div[1]/a')
+                                        driver.wait.until(
+                                            EC.element_to_be_clickable((By.XPATH, '//*[@id="reaction"]/div[1]/a')))
+                                        first_iteration = False
+                                    else:
+                                        link = driver.find_element_by_xpath('//*[@id="reaction"]/div[1]/a[2]')
+                                        driver.wait.until(
+                                            EC.element_to_be_clickable((By.XPATH, '//*[@id="reaction"]/div[1]/a[2]')))
+
+                                    link.click()
+                                    time.sleep(2)
+                                    comments_followup_soup = BeautifulSoup(driver.page_source, "html.parser")
+                                    for section in comments_followup_soup.find_all("section", {"id": "reaction"}):
+                                        for li in section.find_all("li"):
+                                            comment_to_save = Comment()
+                                            for cite in li.find("cite"):
+                                                # sometimes cite is only name, sometimes name with
+                                                comment_to_save.author = re.sub('\s+', ' ', cite).strip()
+                                            for blockquote in li.find("blockquote"):
+                                                comment_to_save.text = blockquote.strip()
+                                            for time_comment in li.find("span"):
+                                                comment_to_save.date = time_comment.strip()
+                                            comments_list.append(comment_to_save)
+                                            logger.debug(comment_to_save)
+                                except NoSuchElementException:
+                                    logger.debug("No more comments")
+                                    new_comments_exist = False
+                                time.sleep(1)
+                        except TimeoutException as e:
+                            logger.debug("Timeoutexception: {0}".format(e))
+
+                        logger.debug(article_to_save)
+                        article_to_save.save()
+                        for comment in comments_list:
+                            comment.article = article_to_save
+                            comment.save()
+                        for tweet_to_save in tweets_list:
+                            tweet_to_save.article = article_to_save
+                            tweet_to_save.save()
+                        time.sleep(1)
+        except TimeoutException as e:
+            logger.debug("TimeoutException: {0}".format(e))
+
         page += 1
         amount_per_page = 10
     logger.debug("loop stopped")
@@ -593,3 +619,110 @@ def demorgen_scrape(task_id, search_word, driver, start_date, end_date):
         time.sleep(3)
     for article in article_objects_list:
         logger.debug(article)
+
+def nieuwsblad_scraper(task_id, search_word, driver, start_date, end_date):
+    """
+    Scraping of website www.nieuwsblad.be archive
+    :param task_id:
+    :param search_word:
+    :param driver:
+    :param start_date:
+    :param end_date:
+    :return:
+    """
+    logger = logging.getLogger('newsscraper')
+    # example_url = "http://www.nieuwsblad.be/zoeken?keyword=vakbond&daterange=all&datestart=01%2F01%2F2016
+    # &dateend=13%2F03%2F2016&categoryrange=00000000-0000-0000-0000-000000000000"
+    # change date format to date in url
+    start_date = start_date.replace('/', "%2F")
+    end_date = end_date.replace('/', "%2F")
+    # construct url
+    first_part_url = "http://www.nieuwsblad.be/zoeken?keyword="
+    start_date_url = "&daterange=all&datestart="
+    end_date_url = "&dateend="
+    last_part_url = "&categoryrange=00000000-0000-0000-0000-000000000000"
+    total_url = first_part_url + search_word + start_date_url + start_date + end_date_url + end_date + last_part_url
+    logger.debug("total url: {0}".format(total_url))
+
+    # if multiple pages are present, they can be fetched with adding &page=nr
+    page_part_url = "&page="
+    page = 1
+    article_links = list()
+    continue_loop = True
+    while continue_loop:
+        logger.debug("Iteration {0}, total_url = {1}".format(page, total_url))
+        # only continue loop if an article has been found
+        continue_loop = False
+        try:
+            driver.get(total_url)
+        except TimeoutException as e:
+            logger.debug("timeoutexception: {0}".format(e))
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        article_div = soup.find("div", {"data-mht-block": "search-main__search-results"})
+        if article_div:
+            articles = article_div.find_all("article")
+            for article in articles:
+                for a in article.find_all("a"):
+                    continue_loop = True
+                    try:
+                        logger.debug(a["href"])
+                        article_links.append(a["href"])
+                    except KeyError as e:
+                        logger.debug("Keyerror: {0}".format(e))
+        page += 1
+        # from the second loop on, the &page= must be added tot the url
+        if page == 2:
+            total_url += page_part_url + str(page)
+        # from the third loop on, the last number only must be replaced in the url
+        if page > 2:
+            total_url = total_url[:-1] + str(page)
+        time.sleep(1)
+    logger.debug("No more articles. Total articles = {0}".format(len(article_links)))
+    # iterate over articles links and fetch article data
+    for link in article_links:
+        logger.debug("Fetch data of {0}".format(link))
+        try:
+            driver.get(link)
+        except TimeoutException as e:
+            logger.debug("timeoutexception: {0}".format(e))
+
+        # TODO: sometimes pop up
+
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        article_to_save = Article()
+        # whole article is inside div
+        article_wrapper = soup.find("div", {"data-mht-block": "article-detail__article-main"})
+        if article_wrapper:
+            title = article_wrapper.find("h1", {'itemprop': 'name'})
+            if title:
+                logger.debug(title.get_text())
+                article_to_save.title = title.get_text()
+            # fetch the data shares (facebook graph not necessary)
+            shares = article_wrapper.find("div", class_="badge badge__shares align-center")
+            if shares:
+                try:
+                    logger.debug(shares["data-shares"])
+                    article_to_save.facebook_shares = shares["data-shares"]
+                except KeyError as e:
+                    logger.debug("Keyerror: {0}".format(e))
+            # article time, author and source
+            article_metadata = article_wrapper.find("footer", class_="article__meta")
+            if article_metadata:
+                # date and time
+                article_time = article_metadata.find("time")
+                if article_time:
+                    try:
+                        logger.debug(article_time["datetime"])
+                        article_to_save.date = article_time["datetime"]
+                    except KeyError as e:
+                        logger.debug("KeyError: {0}".format(e))
+                # author
+                article_author = article_metadata.find("span", {'itemprop': 'author'})
+                if article_author:
+                    logger.debug(article_author.get_text())
+                    article_to_save.author = article_author.get_text()
+                # source
+                article_source = article_metadata.find("span", class_="text-uc")
+                if article_source:
+                    logger.debug(article_source.get_text())
+                    article_to_save.source = article_source.get_text()

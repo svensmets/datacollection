@@ -257,54 +257,59 @@ class TwitterTweepy:
                 self.logger.debug("Build relationships based on friends")
                 # build friends relationshis if the total number of friends is lower or equal to the followers count
                 for user in list_total_users:
-                    list_ids = list()
-                    # collect all friends ids of the user
-                    while True:
-                        try:
-                            for user_ids in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).pages():
-                                for user_id in user_ids:
-                                    list_ids.append(user_id)
-                        except tweepy.TweepError as e:
-                            # reset connection
-                            self.logger.debug("Tweeperror: resetting connection {}".format(e))
-                            self.api = self.authenticate()
-                            time.sleep(50)
-                            continue
-                        break
-                    # remove duplicates
-                    set_ids = set(list_ids)
-                    list_no_duplicates = list(set_ids)
-                    for user_id in list_no_duplicates:
-                        if user_id in list_total_users_ids and user_id != user.user_id:
-                            relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
-                                                           relation_used="friends", task_id=task_id)
-                            relation.save()
+                    # check if user is not protected, otherwise endless loop in resetting connection
+                    if not user.protected:
+                        list_ids = list()
+                        # collect all friends ids of the user
+                        while True:
+                            try:
+                                for user_ids in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).pages():
+                                    for user_id in user_ids:
+                                        list_ids.append(user_id)
+                            except tweepy.TweepError as e:
+                                # if not authorized error, break
+                                # reset connection
+                                self.logger.debug("Tweeperror: resetting connection {}".format(e))
+                                self.api = self.authenticate()
+                                time.sleep(50)
+                                continue
+                            break
+                        # remove duplicates
+                        set_ids = set(list_ids)
+                        list_no_duplicates = list(set_ids)
+                        for user_id in list_no_duplicates:
+                            if user_id in list_total_users_ids and user_id != user.user_id:
+                                relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
+                                                               relation_used="friends", task_id=task_id)
+                                relation.save()
                 self.logger.debug("end of relationships friends")
             else:
                 self.logger.debug("Build relationships based on followers")
                 # build followers relationships if the total numbert of followers is lower than
                 for user in list_total_users:
-                    list_ids = list()
-                    # collect all follower ids of the user
-                    while True:
-                        try:
-                            for user_ids in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).pages():
-                                for user_id in user_ids:
-                                    list_ids.append(user_id)
-                        except tweepy.TweepError as e:
-                            self.logger.debug("Tweeperror in relations: {}".format(e))
-                            self.api = self.authenticate()
-                            time.sleep(50)
-                            continue
-                        break
-                    # remove duplicates
-                    set_ids = set(list_ids)
-                    list_no_duplicates = list(set_ids)
-                    for user_id in list_no_duplicates:
-                        if user_id in list_total_users_ids and user_id != user.user_id:
-                            relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
-                                                           relation_used="followers", task_id=task_id)
-                            relation.save()
+                    # check if user is not protected, otherwise endless loop in resetting connection
+                    if not user.protected:
+                        list_ids = list()
+                        # collect all follower ids of the user
+                        while True:
+                            try:
+                                for user_ids in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).pages():
+                                    for user_id in user_ids:
+                                        list_ids.append(user_id)
+                            except tweepy.TweepError as e:
+                                self.logger.debug("Tweeperror in relations: {}".format(e))
+                                self.api = self.authenticate()
+                                time.sleep(50)
+                                continue
+                            break
+                        # remove duplicates
+                        set_ids = set(list_ids)
+                        list_no_duplicates = list(set_ids)
+                        for user_id in list_no_duplicates:
+                            if user_id in list_total_users_ids and user_id != user.user_id:
+                                relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
+                                                               relation_used="followers", task_id=task_id)
+                                relation.save()
                 self.logger.debug("end of relationships followers")
         self.logger.debug("End of search")
 
@@ -596,16 +601,17 @@ class TwitterTweepy:
             try:
                 tweet.save()
                 retry = False
-            except OperationalError:
-                self.logger.debug("Operationalerror in save tweet: retry times = {}".format(retry_times))
+            except OperationalError as e:
+                self.logger.debug("Operationalerror in save tweet {0}: retry times = {1}".format(e, retry_times))
                 retry_times += 1
                 if retry_times > 10:
-                    self.logger.debug("To many times OperationalError, quitting save tweet")
+                    self.logger.debug("Too many times OperationalError, quitting save tweet")
                     retry = False
-            except UnicodeEncodeError:
-                self.logger.debug("Unicode error in save tweet")
+            except UnicodeEncodeError as e:
+                self.logger.debug("Unicode error in save tweet: {0}".format(e))
                 retry = False
         del tweet
+
 
 class TweetsStreamListener(tweepy.StreamListener):
     """
