@@ -258,7 +258,7 @@ class TwitterTweepy:
                 # build friends relationshis if the total number of friends is lower or equal to the followers count
                 for user in list_total_users:
                     # check if user is not protected, otherwise endless loop in resetting connection
-                    if not user.protected:
+                    if not user.is_protected:
                         list_ids = list()
                         # collect all friends ids of the user
                         while True:
@@ -282,13 +282,15 @@ class TwitterTweepy:
                                 relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
                                                                relation_used="friends", task_id=task_id)
                                 relation.save()
+                    else:
+                        self.logger.debug("User is protected")
                 self.logger.debug("end of relationships friends")
             else:
                 self.logger.debug("Build relationships based on followers")
                 # build followers relationships if the total numbert of followers is lower than
                 for user in list_total_users:
                     # check if user is not protected, otherwise endless loop in resetting connection
-                    if not user.protected:
+                    if not user.is_protected:
                         list_ids = list()
                         # collect all follower ids of the user
                         while True:
@@ -310,6 +312,8 @@ class TwitterTweepy:
                                 relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
                                                                relation_used="followers", task_id=task_id)
                                 relation.save()
+                    else:
+                        self.logger.debug("User is protected")
                 self.logger.debug("end of relationships followers")
         self.logger.debug("End of search")
 
