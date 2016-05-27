@@ -267,9 +267,13 @@ class TwitterTweepy:
                                     for user_id in user_ids:
                                         list_ids.append(user_id)
                             except tweepy.TweepError as e:
-                                # if not authorized error, break
+                                # Sometimes an Not authorized error is thrown for some users, resulting in endless loop
+                                # Catch this error en break when it happens
+                                if "Not authorized" in e:
+                                    self.logger.debug("Not authorized error in relationships based on followers")
+                                    break
                                 # reset connection
-                                self.logger.debug("Tweeperror: resetting connection {}".format(e))
+                                self.logger.debug("Tweeperror in relations friends: resetting connection {}".format(e))
                                 self.api = self.authenticate()
                                 time.sleep(50)
                                 continue
@@ -299,7 +303,12 @@ class TwitterTweepy:
                                     for user_id in user_ids:
                                         list_ids.append(user_id)
                             except tweepy.TweepError as e:
-                                self.logger.debug("Tweeperror in relations: {}".format(e))
+                                # Sometimes an Not authorized error is thrown for some users, resulting in endless loop
+                                # Catch this error en break when it happens
+                                if "Not authorized" in e:
+                                    self.logger.debug("Not authorized error in relationships based on followers: {}".format(e))
+                                    break
+                                self.logger.debug("Tweeperror in relations followers, resetting connection: {}".format(e))
                                 self.api = self.authenticate()
                                 time.sleep(50)
                                 continue
