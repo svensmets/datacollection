@@ -269,7 +269,7 @@ class TwitterTweepy:
                             except tweepy.TweepError as e:
                                 # Sometimes an Not authorized error is thrown for some users, resulting in endless loop
                                 # Catch this error en break when it happens
-                                if "Not authorized" in e:
+                                if "Not authorized" in str(e):
                                     self.logger.debug("Not authorized error in relationships based on followers")
                                     break
                                 # reset connection
@@ -305,7 +305,7 @@ class TwitterTweepy:
                             except tweepy.TweepError as e:
                                 # Sometimes an Not authorized error is thrown for some users, resulting in endless loop
                                 # Catch this error en break when it happens
-                                if "Not authorized" in e:
+                                if "Not authorized" in str(e):
                                     self.logger.debug("Not authorized error in relationships based on followers: {}".format(e))
                                     break
                                 self.logger.debug("Tweeperror in relations followers, resetting connection: {}".format(e))
