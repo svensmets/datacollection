@@ -180,7 +180,7 @@ class TwitterTweepy:
                                     relation = TwitterRelationship(from_user_id=ego_user.user_id, to_user_id=friend_id,
                                                                    relation_used="followers", task_id=task_id)
                                     relation.save()
-                        except tweepy.TweepError:
+                        except tweepy.TweepError as e:
                             self.logger.debug("Error in get followers: {0}".format(e))
                             # reset connection when api cannot connect
                             time.sleep(50)
@@ -206,8 +206,8 @@ class TwitterTweepy:
                                                             list_full_name=twitter_list.full_name, task_id=task_id)
                                     twitterlist.save()
                                     twitterlist.user_membership.add(ego_user)
-                        except tweepy.TweepError:
-                            self.logger.debug("Error in list memberships")
+                        except tweepy.TweepError as e:
+                            self.logger.debug("Error in list memberships: {}".format(e))
                             # reset connection when api cannot connect
                             time.sleep(50)
                             self.api = self.authenticate()
