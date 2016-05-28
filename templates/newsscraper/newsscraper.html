@@ -31,12 +31,21 @@
             <md-button ng-href="" target="_blank">Archive Search</md-button>
         </md-sidenav>
         <md-content flex ng-cloak class="column">
-            <md-toolbar>
+            <md-toolbar ng-controller="ToolbarController">
                 <div class="md-toolbar-tools">
                     <h2 class="md-flex">
                         <span>Newsscraper</span>
                     </h2>
                     <span flex></span>
+                    <!--
+                        http://stackoverflow.com/questions/32397604/angular-material-how-to-position-elements-to-the-right-in-md-toolbar
+                        (Raadpleging op 28/05/2016)
+                    -->
+                    <ANY>
+                        <md-button class="md-icon-button" aria-label="More" ng-click="openTaskMenu()">
+                            <md-icon md-svg-icon="img/icons/more_vert.svg"></md-icon>
+                        </md-button>
+                    </ANY>
                 </div>
             </md-toolbar>
             <div ng-controller="ArchiveSearchCtrl" >

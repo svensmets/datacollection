@@ -62,6 +62,12 @@
             };
     }]);
 
+    app.controller('ToolbarController', ['$scope', '$mdSidenav', function($scope, $mdSidenav){
+        $scope.openTaskMenu = function(){
+            $mdSidenav('right').toggle();
+        };
+    }]);
+
     app.directive('jqdatepicker', function () {
         // http://stackoverflow.com/questions/18144142/jquery-ui-datepicker-with-angularjs (28/04/2016)
         return {
