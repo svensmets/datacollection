@@ -261,16 +261,27 @@ class TwitterTweepy:
                     if not user.is_protected:
                         list_ids = list()
                         # collect all friends ids of the user
+                        # counter to avoid eternal loop
+                        tweeperror_count = 0
                         while True:
                             try:
                                 for user_ids in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).pages():
                                     for user_id in user_ids:
                                         list_ids.append(user_id)
                             except tweepy.TweepError as e:
+                                # to avoid eternal loop, break if too many tweeperrors
+                                tweeperror_count += 1
+                                if tweeperror_count > 10:
+                                    self.logger.debug("Too much times Tweeperror in relations based on friends, break")
+                                    break
                                 # Sometimes an Not authorized error is thrown for some users, resulting in endless loop
-                                # Catch this error en break when it happens
+                                # Catch this error and break when it happens
                                 if "Not authorized" in str(e):
                                     self.logger.debug("Not authorized error in relationships based on followers")
+                                    break
+                                # Sometimes page does not exist error, catch and break
+                                if "page does not exist" in str(e):
+                                    self.logger.debug("Page does not exist error")
                                     break
                                 # reset connection
                                 self.logger.debug("Tweeperror in relations friends: resetting connection {}".format(e))
@@ -297,16 +308,27 @@ class TwitterTweepy:
                     if not user.is_protected:
                         list_ids = list()
                         # collect all follower ids of the user
+                        # counter to avoid eternal loop
+                        tweeperror_count = 0
                         while True:
                             try:
                                 for user_ids in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).pages():
                                     for user_id in user_ids:
                                         list_ids.append(user_id)
                             except tweepy.TweepError as e:
+                                # to avoid eternal loop, break if too many tweeperrors
+                                tweeperror_count += 1
+                                if tweeperror_count > 10:
+                                    self.logger.debug("Too much times Tweeperror in relations based on followers, break")
+                                    break
                                 # Sometimes an Not authorized error is thrown for some users, resulting in endless loop
                                 # Catch this error en break when it happens
                                 if "Not authorized" in str(e):
                                     self.logger.debug("Not authorized error in relationships based on followers: {}".format(e))
+                                    break
+                                # Sometimes page does not exist error
+                                if "page does not exist" in str(e):
+                                    self.logger.debug("Page does not exist error")
                                     break
                                 self.logger.debug("Tweeperror in relations followers, resetting connection: {}".format(e))
                                 self.api = self.authenticate()
