@@ -7,7 +7,8 @@ import pytz
 import logging
 from twitter.models import TwitterUser, TwitterList, TwitterRelationship
 from twitter.models import Tweet
-
+from django.db import connection
+from django.db.utils import OperationalError
 
 
 class TwitterTweepy:
@@ -264,6 +265,7 @@ class TwitterTweepy:
                         # counter to avoid eternal loop
                         tweeperror_count = 0
                         while True:
+                            time.sleep(20)
                             try:
                                 for user_ids in tweepy.Cursor(self.api.friends_ids, user_id=user.user_id).pages():
                                     for user_id in user_ids:
@@ -271,7 +273,7 @@ class TwitterTweepy:
                             except tweepy.TweepError as e:
                                 # to avoid eternal loop, break if too many tweeperrors
                                 tweeperror_count += 1
-                                if tweeperror_count > 10:
+                                if tweeperror_count > 20:
                                     self.logger.debug("Too much times Tweeperror in relations based on friends, break")
                                     break
                                 # Sometimes an Not authorized error is thrown for some users, resulting in endless loop
@@ -294,9 +296,20 @@ class TwitterTweepy:
                         list_no_duplicates = list(set_ids)
                         for user_id in list_no_duplicates:
                             if user_id in list_total_users_ids and user_id != user.user_id:
-                                relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
-                                                               relation_used="friends", task_id=task_id)
-                                relation.save()
+                                try:
+                                    relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
+                                                                   relation_used="friends", task_id=task_id)
+                                    relation.save()
+                                except OperationalError as e:
+                                    # if MySql closes the connection: reopen connection and retry one time
+                                    self.logger.debug("Operationalerror: {}".format(e))
+                                    connection.close()
+                                    try:
+                                        relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
+                                                                       relation_used="followers", task_id=task_id)
+                                        relation.save()
+                                    except OperationalError as e:
+                                        self.logger.debug("Two times operationalerror, stop retry");
                     else:
                         self.logger.debug("User is protected")
                 self.logger.debug("end of relationships friends")
@@ -311,6 +324,7 @@ class TwitterTweepy:
                         # counter to avoid eternal loop
                         tweeperror_count = 0
                         while True:
+                            time.sleep(20)
                             try:
                                 for user_ids in tweepy.Cursor(self.api.followers_ids, user_id=user.user_id).pages():
                                     for user_id in user_ids:
@@ -318,7 +332,7 @@ class TwitterTweepy:
                             except tweepy.TweepError as e:
                                 # to avoid eternal loop, break if too many tweeperrors
                                 tweeperror_count += 1
-                                if tweeperror_count > 10:
+                                if tweeperror_count > 20:
                                     self.logger.debug("Too much times Tweeperror in relations based on followers, break")
                                     break
                                 # Sometimes an Not authorized error is thrown for some users, resulting in endless loop
@@ -340,9 +354,20 @@ class TwitterTweepy:
                         list_no_duplicates = list(set_ids)
                         for user_id in list_no_duplicates:
                             if user_id in list_total_users_ids and user_id != user.user_id:
-                                relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
-                                                               relation_used="followers", task_id=task_id)
-                                relation.save()
+                                try:
+                                    relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
+                                                                   relation_used="followers", task_id=task_id)
+                                    relation.save()
+                                except OperationalError as e:
+                                    # if MySql closes the connection: retry one time
+                                    self.logger.debug("Operationalerror: {}".format(e))
+                                    connection.close()
+                                    try:
+                                        relation = TwitterRelationship(from_user_id=user.user_id, to_user_id=user_id,
+                                                                       relation_used="followers", task_id=task_id)
+                                        relation.save()
+                                    except OperationalError as e:
+                                        self.logger.debug("Two times operationalerror, stop retry");
                     else:
                         self.logger.debug("User is protected")
                 self.logger.debug("end of relationships followers")
@@ -646,6 +671,8 @@ class TwitterTweepy:
                 self.logger.debug("Unicode error in save tweet: {0}".format(e))
                 retry = False
         del tweet
+
+
 
 
 class TweetsStreamListener(tweepy.StreamListener):
