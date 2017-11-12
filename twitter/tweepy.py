@@ -517,6 +517,7 @@ class TwitterTweepy:
                             except:
                                 pass
                             time.sleep(0.3)
+                    break
                 except tweepy.TweepError as e:
                     self.logger.debug("Error in cursor in timeline: {}".format(e))
                     time.sleep(50)
