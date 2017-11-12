@@ -322,7 +322,7 @@ def write_cursor_to_csv(query, csv_file):
     """
     cursor = connection.cursor()
     cursor.execute(query)
-    csv_writer = csv.writer(csv_file)
+    csv_writer = csv.writer(csv_file, dialect="excel")
     csv_writer.writerow([i[0] for i in cursor.description])
     csv_writer.writerows(cursor)
     csv_file.close()
