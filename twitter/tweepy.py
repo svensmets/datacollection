@@ -649,7 +649,7 @@ class TwitterTweepy:
             status_id = status.quoted_status_id
         date_tweet = pytz.utc.localize(status.created_at)
         tweet = Tweet(tweet_id=status.id_str,
-                      tweeter_id=status.user.id, tweeter_name=status.user.screen_name, tweet_text=text_of_tweet,
+                      tweeter_id=status.user.id, tweeter_name=status.user.screen_name, tweet_text=text_of_tweet.encode(encoding = "utf-8"),
                       tweet_date=date_tweet, is_retweet=is_retweet,
                       mentions=mentions, hashtags=hashtags, hyperlinks=urls, task_id=task_id,
                       coordinates=status.coordinates, favorite_count=status.favorite_count, id_str=status.id_str,
