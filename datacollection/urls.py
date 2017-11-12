@@ -25,5 +25,4 @@ urlpatterns = [
     url(r'^logout/$', LogoutPage.as_view(), name='logout'),
     url(r'^admin/', include(admin.site.urls)),
     url(r'^twitter/', include('twitter.urls')),
-    url(r'^newsscraper/', include('newsscraper.urls')),
 ]
